@@ -1,0 +1,47 @@
+{
+  "name": "smule",
+  "description": "A javascript library for Smule's mobile API",
+  "author": {
+    "name": "michei69",
+    "email": "michei69@duck.com",
+    "url": "https://github.com/michei69"
+  },
+  "license": "MIT",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts --format esm --watch --dts",
+    "test": "jest",
+    "prepublishOnly": "npm run build"
+  },
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^24.0.10",
+    "eslint": "^9.30.1",
+    "jest": "^30.0.4",
+    "prettier": "^3.6.2",
+    "tsup": "^8.5.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "trustedDependencies": [
+    "unrs-resolver"
+  ],
+  "dependencies": {
+    "@types/xmpp__jid": "^1.3.5",
+    "@xmpp/client": "^0.13.6",
+    "@xmpp/debug": "^0.13.5",
+    "@xmpp/jid": "^0.13.2",
+    "@xmpp/resolve": "^0.13.3",
+    "@xmpp/starttls": "^0.13.3",
+    "@xmpp/xml": "^0.13.3",
+    "axios": "^1.10.0",
+    "midi-file": "^1.2.4",
+    "yauzl": "^3.2.0"
+  },
+  "files": ["dist"],
+  "keywords": ["smule", "api", "typescript", "library", "karaoke"]
+}
