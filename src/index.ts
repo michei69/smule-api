@@ -5,7 +5,10 @@ import type { SmuleSession } from "./smule-types";
 
 export { Smule }
 export type { SmuleSession }
-// TODO: move stuff that shouldn't be exported OUT of this file
+
+// TODO: move stuff that shouldn't be exported OUT of these files
+export * from "./smule-midi-types"
+export * from "./smule-chat-types"
 export * from "./smule-types" 
 export * from "./util"
 
