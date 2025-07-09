@@ -30,6 +30,7 @@ import { CustomFormData, SmuleUtil, Util } from "./util";
 import axios, { type AxiosResponse } from "axios";
 import { SmuleLiveChat } from "./smule-live-chat";
 import { SmuleAudio } from "./smule-audio";
+import { SmuleMIDI } from "./smule-midi";
 import { SmuleUrls } from "./smule-urls";
 import { SmuleChat } from "./smule-chat";
 import { readFileSync } from "fs";
@@ -340,6 +341,8 @@ export class Smule {
          */
         _checkUrlAllowed: (url: string) => {
             if (!this.account.isLoggedIn() && !SmuleUrls.NoSessionRequired.has(url)) {
+                // if we are trying to refresh an expired login then just ignore it lol
+                if (this.session.expired && !!this.session.refreshToken && url == SmuleUrls.LoginRefresh) return
                 throw new Error(`You must be logged in in order to access ${url}`)
             }
             if (!this.session.isGuest) return
@@ -1029,6 +1032,44 @@ export class Smule {
             let req = await this.internal._createRequest(SmuleUrls.ArrOwned, { ownerAccountId: ownerId, offset, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<any>(req)
+        },
+
+        /**
+         * Fetches the lyrics and pitches for a certain arrangement
+         * @param key The song / arr key
+         * @returns The lyrics, their type, and the pitches
+         */
+        fetchLyricsAndPitches: async (key: string) => {
+            const { arrVersion } = await this.songs.fetchOne(key)
+            const filesData = SmuleUtil.getFilesFromArr(arrVersion)
+            let req = await axios({
+                url: filesData.midi_file || filesData.midi_file_original,
+                method: "GET",
+                responseType: "arraybuffer",
+            })
+
+            const lyrics = SmuleMIDI.fetchLyricsFromMIDI(req.data)
+
+            if (filesData.pitch_file) {
+                req = await axios({
+                    url: filesData.pitch_file,
+                    method: "GET",
+                    responseType: "arraybuffer",
+                })
+
+                const pitch = SmuleMIDI.fetchPitchesFromMIDI(req.data, lyrics.lyrics)
+
+                return { 
+                    lyrics: lyrics.lyrics,
+                    pitches: pitch,
+                    type: lyrics.type
+                }
+            }
+            return {
+                lyrics: lyrics.lyrics,
+                pitches: lyrics.pitches,
+                type: lyrics.type
+            }
         },
 
         /**

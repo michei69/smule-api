@@ -1,4 +1,4 @@
-import { SmuleSession } from "./smule-types"
+import { SmuleSession, type ArrExtended } from "./smule-types"
 
 export namespace Util {
     export function getParametersFromUrl(url: string) {
@@ -81,5 +81,26 @@ export namespace SmuleUtil {
 
     export function isVerified(verifiedType: string) {
         return ["STAFF", "PARTNER_ARTIST", "VERIFIED_BASIC"].includes(verifiedType)
-    }    
+    }
+
+    export function getFilesFromArr(arr: ArrExtended) {
+        return {
+            preview: arr.normResources.find(r => r.role == "preview")?.url,
+            cover: arr.normResources.find(r => r.role == "cover_art")?.url,
+            cover_android: arr.normResources.find(r => r.role == "cover_art_google")?.url,
+            cover_ios: arr.normResources.find(r => r.role == "cover_art_ios")?.url,
+            midi_file: arr.normResources.find(r => r.role == "main")?.url,
+            song_file: arr.normResources.find(r => r.role == "background")?.url,
+            meta_file: arr.normResources.find(r => r.role == "meta")?.url,
+            mir_file: arr.normResources.find(r => r.role == "mir")?.url,
+
+            preview_original: arr.origResources.find(r => r.role == "preview")?.url,
+            cover_original: arr.origResources.find(r => r.role == "cover")?.url,
+            cover_android_original: arr.origResources.find(r => r.role == "cover_google")?.url,
+            cover_ios_original: arr.origResources.find(r => r.role == "cover_ios")?.url,
+            midi_file_original: arr.origResources.find(r => r.role == "midi")?.url,
+            song_file_original: arr.origResources.find(r => r.role == "bg")?.url,
+            pitch_file: arr.origResources.find(r => r.role == "pitch")?.url,
+        }
+    }
 }

@@ -12,7 +12,10 @@
     "build": "tsup src/index.ts --format cjs,esm --dts --clean",
     "dev": "tsup src/index.ts --format esm --watch --dts",
     "test": "jest",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "bump-patch": "npm version patch -m \"[bump] v%s\"",
+    "bump-minor": "npm version minor -m \"[bump] v%s\"",
+    "bump-major": "npm version major -m \"[bump] v%s\""
   },
   "module": "index.ts",
   "type": "module",
@@ -45,6 +48,16 @@
     "midi-file": "^1.2.4",
     "yauzl": "^3.2.0"
   },
-  "files": ["dist"],
-  "keywords": ["smule", "api", "typescript", "library", "karaoke", "songs", "unofficial"]
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "smule",
+    "api",
+    "typescript",
+    "library",
+    "karaoke",
+    "songs",
+    "unofficial"
+  ]
 }
