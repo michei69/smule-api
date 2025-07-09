@@ -83,6 +83,10 @@ export namespace SmuleUtil {
         return ["STAFF", "PARTNER_ARTIST", "VERIFIED_BASIC"].includes(verifiedType)
     }
 
+    export function isVIP(subApps: string[]) {
+        return subApps.filter(s => ["sing_google", "sing"].includes(s)).length > 0
+    }
+
     export function getFilesFromArr(arr: ArrExtended) {
         return {
             preview: arr.normResources.find(r => r.role == "preview")?.url,
