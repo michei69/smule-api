@@ -30,6 +30,7 @@
 
 import type { EnsembleType, PerformancesFillStatus, PerformanceSortMethod, PerformancesSortOrder, SearchResultSort, SearchResultType } from "./smule-types"
 
+// should we let the user change this?
 export const BluestacksDevice = {
     "carrierCountry": "us",
     "country": "US",
@@ -48,10 +49,10 @@ export const BluestacksDevice = {
     "script": ""
 }
 export const LoginCommon = {
-    "advId": "2662dd3a-5cf2-4eae-9329-ce1849f43f6f",
+    "advId": "2662dd3a-5cf2-4eae-9329-ce1849f43f6f", // this could be randomized
     "device": BluestacksDevice,
     "automaticLogin": true,
-    "playerId": 2674240701,
+    "playerId": 0,
     "reactivateSubmittedAccount": false,
     "tzOffset": 7200,
     "vorgom": false,

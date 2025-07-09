@@ -43,6 +43,10 @@
 // ⣯⠷⡽⢧⡟⣵⣏⢷⣫⢗⡯⣽⢳⣝⠾⣧⣝⢤⠀⠛⢯⡞⡽⣷⡄⠐⠄⠊⠄⡉⠻⣿⣿⣿⣞⡿⣷⣡⢋⠴⣻⣯⣟⡿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⠀⠀⢀⠴⠊⠀⠀⢸⡄⠂⠈⣷⠈⣷⠀⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⠴⠊⠁⠀⠀⠀⠀⠀⣠⠏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣰⣿⣿⣿⣿⣿⣿
 import * as yauzl from "yauzl"
 
+
+//TODO: is anyone actually willing to implement this?
+//TODO: i suck ass at anything audio related, so like-
+//TODO: reverse engineering the audio effects feels like a waste of time honestly
 export namespace SmuleEffects {
     export type AVFile = {
         component_library: ComponentLibrary,

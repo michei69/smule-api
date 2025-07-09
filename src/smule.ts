@@ -38,13 +38,6 @@ import { JID } from "@xmpp/jid";
 
 export const APP_VERSION = "12.0.9"
 
-class InvalidParametersError extends Error {
-    constructor(message: string) {
-        super(message)
-        this.name = "InvalidParametersError"
-    }
-}
-
 /**
  * Namespace for Smule's digest parameter found in http requests
  * 
@@ -73,7 +66,7 @@ export namespace SmuleDigest {
 
         for (let param of required) {
             if (!parameters[param])
-                throw new InvalidParametersError(`Missing parameter ${param}`)
+                throw new Error(`Missing parameter ${param}`)
 
             neededParameters[param] = parameters[param]
         }
@@ -229,6 +222,8 @@ export class Smule {
         },
 
         _createRequest: async (url: string, body: any, isGetRequest = false, checkSession = true) => {
+            this.internal._checkUrlAllowed(url)
+
             let params = new URLSearchParams()
             params.append("app", "sing_google")
             params.append("appVariant", "1")
@@ -338,6 +333,19 @@ export class Smule {
                 type: "own"
             })
             this.internal._handleNon200(req)
+        },
+
+        /**
+         * throws an error if guest access is not allowed, and session is a guest
+         */
+        _checkUrlAllowed: (url: string) => {
+            if (!this.account.isLoggedIn() && !SmuleUrls.NoSessionRequired.has(url)) {
+                throw new Error(`You must be logged in in order to access ${url}`)
+            }
+            if (!this.session.isGuest) return
+            if (SmuleUrls.GuestProhibited.has(url)) {
+                throw new Error(`Guest access not allowed for ${url}`)
+            }
         }
     }
 
@@ -368,11 +376,6 @@ export class Smule {
              * @returns The accounts' details
              */
             byIds: async (accountIds: number[]) => {
-                if (!this.account.isLoggedIn()) {
-                    _error("You must be logged in in order to fetch accounts.")
-                    return
-                }
-
                 let req = await this.internal._createRequest(SmuleUrls.AccountLookup, { accountIds })
                 if (!this.internal._handleNon200(req)) return
                 return this.internal._getResponseData<UsersLookupResult>(req)
@@ -384,11 +387,6 @@ export class Smule {
              * @returns The account's details
              */
             byId: async (accountId: number) => {
-                if (!this.account.isLoggedIn()) {
-                    _error("You must be logged in in order to fetch accounts.")
-                    return
-                }
-
                 let data = await this.account.lookup.byIds([accountId])
                 return data.accountIcons[0]
             }
@@ -405,6 +403,7 @@ export class Smule {
             let res = this.internal._getResponseData<LoginAsGuestResult>(req)
             //* Guests do not receive a refresh token
             this.session.sessionToken = res.loginResult.sessionToken
+            this.session.refreshToken = ""
             this.session.isGuest = true
             this.session.expired = false
 
@@ -474,11 +473,6 @@ export class Smule {
          * @returns Your profile
          */
         fetchSelf: async () => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch your account.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.SingUserProfileMe, { includeActiveState: false })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<ProfileResult>(req)
@@ -490,11 +484,6 @@ export class Smule {
          * @returns The user's details
          */
         fetchOne: async (accountId: number) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch accounts.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.SingUserProfile, new ProfileRequest(accountId))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<ProfileResult>(req)
@@ -521,15 +510,6 @@ export class Smule {
              * @returns idk
              */
             create: async (address: string, type: "ACCT" | "GRP" = "ACCT") => {
-                if (!this.account.isLoggedIn()) {
-                    _error("You must be logged in in order to create a chat.")
-                    return
-                }
-                if (this.session.isGuest) {
-                    _error("You must be logged in as a user in order to create a chat.")
-                    return
-                }
-
                 let req = await this.internal._createRequest(SmuleUrls.SparkChatUpdate, { add: [{ name: address, type }], remove: [] })
                 if (!this.internal._handleNon200(req)) return
                 return this.internal._getResponseData<any>(req)
@@ -539,12 +519,10 @@ export class Smule {
              */
             connect: async () => {
                 if (!this.account.isLoggedIn()) {
-                    _error("You must be logged in in order to connect to a chat.")
-                    return
+                    throw new Error("You must be logged in in order to connect to a chat.")
                 }
                 if (this.session.isGuest) {
-                    _error("You must be logged in as a user in order to connect to a chat.")
-                    return
+                    throw new Error("You must be logged in as a user in order to connect to a chat.")
                 }
 
                 if (this.dmSession && this.dmSession.state == "connected") {
@@ -690,16 +668,7 @@ export class Smule {
          * @param accountIds The ids of the accounts to check
          * @returns The users you're following, and the one's you aren't
          */
-        followingUsers: async (accountIds: number[]) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to check if you're following users.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You must be logged in as a user in order to check if you're following users.")
-                return
-            }
-
+        isFollowingUsers: async (accountIds: number[]) => {
             let req = await this.internal._createRequest(SmuleUrls.SocialIsFollowing, new IsFollowingRequest(accountIds))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<FollowingResult>(req)
@@ -710,8 +679,8 @@ export class Smule {
          * @param accountId The id of the account to check.
          * @returns The user you're following, and an empty array, or vice-versa
          */
-        followingUser: async (accountId: number) => {
-            return this.social.followingUsers([accountId])
+        isFollowingUser: async (accountId: number) => {
+            return await this.social.isFollowingUsers([accountId])
         },
 
         /**
@@ -719,15 +688,6 @@ export class Smule {
          * @param accountIds The ids of the accounts to follow.
          */
         followUsers: async (accountIds: number[]) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to follow users.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You must be logged in as a user in order to follow users.")
-                return
-            }
-
             // There is no return here
             let req = await this.internal._createRequest(SmuleUrls.SocialFolloweeUpdate, new UpdateFollowingRequest(accountIds, []))
             this.internal._handleNon200(req)
@@ -738,7 +698,7 @@ export class Smule {
          * @param accountId The id of the account to follow.
          */
         followUser: async (accountId: number) => {
-            return this.social.followUsers([accountId])
+            return await this.social.followUsers([accountId])
         },
 
         /**
@@ -746,15 +706,6 @@ export class Smule {
          * @param accountIds The ids of the accounts to unfollow.
          */
         unfollowUsers: async (accountIds: number[]) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to unfollow users.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You must be logged in as a user in order to unfollow users.")
-                return
-            }
-
             // There is no return here
             let req = await this.internal._createRequest(SmuleUrls.SocialFolloweeUpdate, new UpdateFollowingRequest([], accountIds))
             this.internal._handleNon200(req)
@@ -765,7 +716,7 @@ export class Smule {
          * @param accountId The id of the account to unfollow.
          */
         unfollowUser: async (accountId: number) => {
-            return this.social.unfollowUsers([accountId])
+            return await this.social.unfollowUsers([accountId])
         },
 
         /**
@@ -776,11 +727,6 @@ export class Smule {
          * @remarks Followee = Following
          */
         fetchFollowings: async (accountId: number) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch followees.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.SocialFollowee, { accountId })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<FolloweeResult>(req)
@@ -793,11 +739,6 @@ export class Smule {
          * @remarks Smule returns the ENTIRE list of followers, nonpaginated, so make sure you use it wisely
          */
         fetchFollowers: async (accountId: number) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch followers.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.SocialFollower, { accountId })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<FollowersResult>(req)
@@ -811,10 +752,6 @@ export class Smule {
          * @returns The comments on the performance.
          */
         fetchComments: async (performanceKey: string, offset: number = 0, limit: number = 25) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch comments.")
-                return
-            }
             if (offset < 0) {
                 _error("Offset must be positive")
                 return
@@ -835,14 +772,6 @@ export class Smule {
          * @param commentKey The comment's key.
          */
         likeComment: async (performanceKey: string, commentKey: string) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to like a comment.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot like a comment as a guest.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.CommentLike, {
                 postKey: commentKey,
                 performanceKey
@@ -856,14 +785,6 @@ export class Smule {
          * @param commentKey The comment's key.
          */
         unlikeComment: async (performanceKey: string, commentKey: string) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to unlike a comment.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot unlike a comment as a guest.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.CommentUnlike, {
                 postKey: commentKey,
                 performanceKey
@@ -896,14 +817,6 @@ export class Smule {
          * @returns The created comment's details.
          */
         createComment: async (performanceKey: string, comment: string, latitude = 37, longitude = -120) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to comment.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot comment as a guest.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.PerformanceComment, {
                 comment,
                 latitude,
@@ -919,14 +832,6 @@ export class Smule {
          * @param postKeys The keys of the comments to delete.
          */
         deleteComments: async (performanceKey: string, postKeys: string[]) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to delete comments.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot delete comments as a guest.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.PerformanceDeleteComment, {
                 postKeys,
                 performanceKey
@@ -948,14 +853,6 @@ export class Smule {
          * @param performanceKey The performance's key
          */
         likePerformance: async (performanceKey: string) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to mark a performance as loved.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot mark a performance as loved as a guest.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.PerformanceLove, {
                 performanceKey,
                 latitude: this.session.latitude,
@@ -969,10 +866,6 @@ export class Smule {
          * @returns The blocked users.
          */
         fetchBlocked: async () => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch blocked users.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.SocialBlockList, {})
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SocialBlockListResult>(req) || { accountIds: [] } // api might return null
@@ -983,11 +876,6 @@ export class Smule {
          * @param accountIds The ids of the accounts to block.
          */
         blockUsers: async (accountIds: number[]) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to block users.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.SocialBlockUpdate, { add: accountIds, remove: [] })
             this.internal._handleNon200(req)
         },
@@ -997,7 +885,7 @@ export class Smule {
          * @param accountId The id of the account to block.
          */
         blockUser: async (accountId: number) => {
-            return this.social.blockUsers([accountId])
+            return await this.social.blockUsers([accountId])
         },
 
         /**
@@ -1005,11 +893,6 @@ export class Smule {
          * @param accountIds The ids of the accounts to unblock.
          */
         unblockUsers: async (accountIds: number[]) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to unblock users.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.SocialBlockUpdate, { add: [], remove: accountIds })
             this.internal._handleNon200(req)
         },
@@ -1019,7 +902,7 @@ export class Smule {
          * @param accountId The id of the account to unblock.
          */
         unblockUser: async (accountId: number) => {
-            return this.social.unblockUsers([accountId])
+            return await this.social.unblockUsers([accountId])
         },
 
         /**
@@ -1031,10 +914,6 @@ export class Smule {
          * @returns An object containing the profile views of the current user.
          */
         fetchProfileViews: async (period: "WEEK" | "MONTH" | "QUARTER" = "WEEK", cursor = "start", limit = 10) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch profile views.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.AccountProfileStatsViews, { period, cursor, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<ProfileViewsResult>(req)
@@ -1047,10 +926,6 @@ export class Smule {
          * @returns Some invites.
          */
         fetchPersonalInvites: async (cursor = "start", limit = 20) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch invites.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.InviteMe, { cursor, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<InviteMeResult>(req)
@@ -1063,10 +938,6 @@ export class Smule {
          * @returns Some invites.
          */
         fetchInvites: async (cursor = "start", limit = 20) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch invites.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.InviteList, { cursor, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<InviteListResult>(req)
@@ -1084,11 +955,6 @@ export class Smule {
          * @returns The "song book"
          */
         fetchSongbook: async (cursor = "start", limit = 10) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to get a song book.")
-                return
-            }
-
             let req = await this.internal._createRequest(this.session.isGuest ? SmuleUrls.SongbookGuest : SmuleUrls.Songbook, new SongbookRequest(cursor, limit))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SongbookResult>(req)
@@ -1099,15 +965,6 @@ export class Smule {
          * @returns The updated songbook.
          */
         updateSongbook: async (categoryIds: number[]) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to update a song book.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot update your song book as a guest.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.SongbookUpdate, { categoryIds })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<any>(req)
@@ -1121,11 +978,6 @@ export class Smule {
          * @returns The songs
          */
         fetchFromCategory: async (cursor = "start", categoryId = 9998, limit = 10, duetAccountId?: number) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch songs.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.Category, new CategorySongsRequest(cursor, limit, categoryId))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<CategorySongsResult>(req)
@@ -1136,11 +988,6 @@ export class Smule {
          * @returns The list of categories sorted by the specified type.
          */
         fetchCategoryList: async (sortType: "POPULAR" | "ALPHA" = "POPULAR") => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch a song.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.CategoryList, { sort: sortType })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<CategoryListResult>(req)
@@ -1153,11 +1000,6 @@ export class Smule {
          * @returns The details of the song
          */
         fetchOne: async (key: string) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch a song.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.Arr, { arrKey: key })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<ArrResult>(req)
@@ -1166,11 +1008,6 @@ export class Smule {
         //TODO: raven is also sth ive seen in those official songs too
         //TODO: maybe they have another specialised id?
         fetchOneFromRaven: async (ravenSongId: string) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch a song.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.ArrFromRSong, { rsongId: ravenSongId })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<ArrResult>(req)
@@ -1182,11 +1019,6 @@ export class Smule {
          * @returns The details of the songs.
          */
         fetch: async (keys: string[]) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch a song.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.ArrByKeys, { arrKeys: keys })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<ArrByKeysResult>(req)
@@ -1194,11 +1026,6 @@ export class Smule {
 
         // TODO: test and doc
         fetchOwnedBy: async (ownerId: number, offset = 0, limit = 10) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch owned songs.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.ArrOwned, { ownerAccountId: ownerId, offset, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<any>(req)
@@ -1210,15 +1037,6 @@ export class Smule {
          * @returns idk
          */
         bookmark: async (key: string) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to bookmark a song.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot bookmark a song as a guest.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.ArrBookmark, { arrKey: key })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<any>(req) // TODO:
@@ -1229,15 +1047,6 @@ export class Smule {
          * @returns idk
          */
         unbookmark: async (key: string) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to unbookmark a song.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot unbookmark a song as a guest.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.ArrBookmarkRemove, { arrKey: key })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<any>(req)
@@ -1250,11 +1059,6 @@ export class Smule {
          * @returns idk prolly bookmarks
          */
         fetchBookmarks: async (cursor = "start", limit = 10) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch bookmarked songs.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.ArrBookmarkList, { cursor, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<any>(req)
@@ -1262,15 +1066,6 @@ export class Smule {
 
         //TODO:
         update: async (key: string, artist?: string, name?: string, tags?: string[]) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to update a song.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot update a song as a guest.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.ArrUpdate, { arrKey: key, artist, name, tags })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<any>(req)
@@ -1278,15 +1073,6 @@ export class Smule {
 
         //TODO:
         vote: async (key: string, arrVersion: number, reason: string, vote: "UP" | "DOWN") => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to vote on a song.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot vote on a song as a guest.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.ArrVote, { arrKey: key, ver: arrVersion, reason, vote })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<any>(req)
@@ -1294,15 +1080,6 @@ export class Smule {
 
         //TODO:
         delete: async (key: string, deletePerformances = true) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to delete a song.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot delete a song as a guest.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.ArrDelete, { arrKey: key, deletePerfs: deletePerformances })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<any>(req)
@@ -1323,11 +1100,6 @@ export class Smule {
              * @returns The performances' details
              */
             byKeys: async (performanceKeys: string[]) => {
-                if (!this.account.isLoggedIn()) {
-                    _error("You must be logged in in order to fetch performances.")
-                    return
-                }
-
                 let req = await this.internal._createRequest(SmuleUrls.PerformanceByKeys, { performanceKeys })
                 if (!this.internal._handleNon200(req)) return
                 return this.internal._getResponseData<PerformanceByKeysResult>(req)
@@ -1339,11 +1111,6 @@ export class Smule {
              * @returns The performance's details
              */
             byKey: async (performanceKey: string) => {
-                if (!this.account.isLoggedIn()) {
-                    _error("You must be logged in in order to fetch performances.")
-                    return
-                }
-
                 let data = await this.performances.lookUp.byKeys([performanceKey])
                 return data!.performanceIcons[0]
             },
@@ -1356,11 +1123,6 @@ export class Smule {
              * @returns The performances
              */
             byUser: async (accountId: number, limit = 20, offset = 0) => {
-                if (!this.account.isLoggedIn()) {
-                    _error("You must be logged in in order to fetch performances.")
-                    return
-                }
-
                 let req = await this.internal._createRequest(SmuleUrls.PerformanceParts, new PerformancesByUserRequest(accountId, limit, offset))
                 if (!this.internal._handleNon200(req)) return
                 return this.internal._getResponseData<PerformancesByUserResult>(req)
@@ -1376,11 +1138,6 @@ export class Smule {
              * @returns The performances associated with the given AV template.
              */
             byAvTemplate: async (templateId: number, cursor = "start", limit = 10, performanceKey?: string) => {
-                if (!this.account.isLoggedIn()) {
-                    _error("You must be logged in in order to fetch performances.")
-                    return
-                }
-
                 let req = await this.internal._createRequest(SmuleUrls.DiscoveryPerfByAvTemplateList, { avTemplateId: templateId, cursor, limit, performanceKey })
                 if (!this.internal._handleNon200(req)) return
                 return this.internal._getResponseData<PerformancesByAvTemplateResult>(req)
@@ -1397,11 +1154,6 @@ export class Smule {
          * @returns The performances.
          */
         list: async (sort: PerformancesSortOrder = "SUGGESTED", fillStatus: PerformancesFillStatus = "ACTIVESEED", limit = 20, offset = 0) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch performances.")
-                return
-            }
-
             const req = await this.internal._createRequest(SmuleUrls.PerformanceList, new PerformancesListRequest(sort, fillStatus, limit, offset))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PerformanceList>(req)
@@ -1419,11 +1171,6 @@ export class Smule {
          * @returns The performances.
          */
         fetchList: async (key: string, sort: PerformancesSortOrder = "RECENT", fillStatus: PerformancesFillStatus = "ACTIVESEED", limit = 25, offset = 0, video?: boolean) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch performances.")
-                return
-            }
-
             const req = await this.internal._createRequest(SmuleUrls.PerformanceList, new PerformanceReq(key, sort, fillStatus, limit, offset, video))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PerformanceList>(req)
@@ -1436,11 +1183,6 @@ export class Smule {
          * @returns The performance lists.
          */
         fetchLists: async (requests: PerformanceReq[]) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch performances.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.PerformanceLists, { perfRequests: requests })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<{ perfLists: PerformanceList[] }>(req)
@@ -1452,11 +1194,6 @@ export class Smule {
          * @returns The performance's details
          */
         fetchOne: async (performanceKey: string) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch a performance.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.PerformanceUrl, { performanceKey })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PerformanceResult>(req)
@@ -1472,11 +1209,6 @@ export class Smule {
          * @returns The performances of the user
          */
         fetchFromAccount: async (accountId: number, fillStatus: PerformancesFillStatus = "FILLED", sortMethod: PerformanceSortMethod = "NEWEST_FIRST", limit: number = 20, offset: number = 0) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch performances.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.PerformanceParts, new PerformancePartsRequest(accountId, fillStatus, sortMethod, limit, offset))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PerformancePartsResult>(req)
@@ -1490,11 +1222,6 @@ export class Smule {
          * @returns The children performances of the given performance.
          */
         fetchChildren: async (performanceKey: string, limit = 25, offset = 0) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch performances.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.PerformanceChildren, { performanceKey, limit, offset })
             if (!this.internal._handleNon200(req)) {
                 return {
@@ -1510,11 +1237,6 @@ export class Smule {
          * @returns The details of the performances.
          */
         fetchDetails: async (performanceKeys: string[]) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch performance details.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.PerformanceListDetails, { keys: performanceKeys, returnAvTemplateDetails: true, returnBookmarked: true, returnLoved: true, returnRestricted: true, returnTopComment: true })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PerformanceDetailsResult>(req)
@@ -1541,7 +1263,7 @@ export class Smule {
          */
         uploadAuto: async (createRequest: PerformanceCreateRequest, uploadType: "CREATE" | "JOIN", audioFile: Buffer | string, coverFile?: Buffer | string, updateThisPerformance?: PerformanceIcon | any) => {
             let meta = Buffer.from(JSON.stringify(SmuleAudio.createMetadataJSON()))
-            return this.performances.upload(createRequest, uploadType, audioFile, meta, coverFile, updateThisPerformance);
+            return await this.performances.upload(createRequest, uploadType, audioFile, meta, coverFile, updateThisPerformance);
         },
 
 
@@ -1667,14 +1389,6 @@ export class Smule {
          * @param performanceKey The key of the performance to be deleted.
          */
         deleteOne: async (performanceKey: string) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to delete a performance")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot delete a performance as a guest")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.PerformanceDelete, { performanceKey })
             this.internal._handleNon200(req)
         }
@@ -1689,11 +1403,6 @@ export class Smule {
          * @returns The trending searches currently available
          */
         fetchTrending: async () => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch trending searches.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.RecTsrch, {})
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<TrendingSearchResult>(req)
@@ -1705,11 +1414,6 @@ export class Smule {
          * @returns The search result
          */
         perform: async (query: string) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to search.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.SearchGlobal, { includeRecording: 0, term: query })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SearchResult>(req)
@@ -1725,11 +1429,6 @@ export class Smule {
          * @returns The search results matching the specified criteria.
          */
         performSpecific: async (query: string, type: SearchResultType, sort: SearchResultSort = "POPULAR", cursor = "start", limit = 25) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to search.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.Search, new SearchRequest(cursor, limit, type, sort, query))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SearchResult>(req)
@@ -1742,11 +1441,6 @@ export class Smule {
          * @returns The autocomplete suggestions
          */
         fetchAutocomplete: async (query: string, limit = 5) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to get autocomplete.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.SearchAutocomplete, new AutocompleteRequest(query, limit))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<AutocompleteResult>(req)
@@ -1764,11 +1458,6 @@ export class Smule {
          * @returns The fetched AV templates.
          */
         fetch: async (limit = 25) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch av templates.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.AvtemplateCategoryList, new AvTemplateCategoryListRequest("AUDIO", "start", limit, "STANDARD"))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<AvTemplateCategoryListResult>(req)
@@ -1785,15 +1474,7 @@ export class Smule {
          * @param arrKey The key associated with the song to be marked as played.
          */
         markSongAsPlayed: async (arrKey: string) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to mark a song as played")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot mark a song as played as a guest")
-                return
-            }
-            _log("Marking song as played...")
+            // _log("Marking song as played...")
             let req = await this.internal._createRequest(SmuleUrls.ArrPlay, { arrKey })
             this.internal._handleNon200(req)
         },
@@ -1804,15 +1485,7 @@ export class Smule {
          * @param performanceKey The key associated with the performance to be marked as played.
          */
         markPerformanceAsPlayed: async (performanceKey: string) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to mark a performance as played")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot mark a performance as played as a guest")
-                return
-            }
-            _log("Marking performance as played...")
+            // _log("Marking performance as played...")
             let req = await this.internal._createRequest(SmuleUrls.PerformancePlay, { performanceKey })
             this.internal._handleNon200(req)
         },
@@ -1823,15 +1496,7 @@ export class Smule {
          * @param performanceKey The key associated with the performance to be marked as listened to.
          */
         markPerformanceListenStart: async (performanceKey: string) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to mark a performance as played")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot mark a performance as played as a guest")
-                return
-            }
-            _log("Marking performance as listened to...")
+            // _log("Marking performance as listened to...")
             let req = await this.internal._createRequest(SmuleUrls.PerformanceListenStart, { performanceKey })
             this.internal._handleNon200(req)
         }
@@ -1846,10 +1511,6 @@ export class Smule {
          * @returns The playlists that match the specified criteria.
          */
         fetchPlaylists: async () => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to explore playlists.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.PlaylistExplore, {})
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PlaylistExploreResult>(req)
@@ -1863,10 +1524,6 @@ export class Smule {
          * @returns The playlist with the specified details.
          */
         fetchPlaylist: async (playlistId: number, offset = 0, limit = 10) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch a playlist.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.PlaylistGet, { playlistId, offset, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PlaylistGetResult>(req)
@@ -1879,10 +1536,6 @@ export class Smule {
          * @returns The users that match the specified criteria.
          */
         fetchAccounts: async (cursor = "start", limit = 20) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to explore accounts.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.AccountExplore, { cursor, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<AccountExploreResult>(req)
@@ -1896,10 +1549,6 @@ export class Smule {
          * @returns The groups matching the specified criteria.
          */
         fetchGroups: async (cursor = "start", limit = 10, sortBy = "RECOMMENDED") => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to explore groups.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.SfamList, { cursor, limit, sortBy })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SFAMExploreResult>(req)
@@ -1914,14 +1563,6 @@ export class Smule {
          * @remarks You must be logged in and not a guest in order to explore livestreams.
          */
         fetchLivestreams: async (cursor = "start", limit = 20, sort = "POPULAR") => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to explore livestreams.")
-                return
-            }
-            if (this.session.isGuest) {
-                _error("You cannot explore livestreams as a guest.")
-                return
-            }
             let self = await this.account.fetchSelf()
             let req = await this.internal._createRequest(SmuleUrls.CfireList, { accountId: self.profile.accountIcon.accountId, cursor, limit, sort })
             if (!this.internal._handleNon200(req)) return
@@ -1936,11 +1577,6 @@ export class Smule {
          * @remarks You must be logged in in order to fetch your feed.
          */
         fetchFeed: async (cursor = "start", limit = 20) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch your feed.")
-                return
-            }
-
             let req = await this.internal._createRequest(SmuleUrls.SocialFeedList, { cursor, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SocialFeedListResult>(req)
@@ -1950,10 +1586,6 @@ export class Smule {
     // utterly useless but it's here if needed
     public settings = {
         fetch: async () => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch settings.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.Settings, new SettingsRequest())
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SettingsResult>(req)
@@ -2072,10 +1704,6 @@ export class Smule {
             },
         },
         fetch: async (campfireId: number) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch live.")
-                return
-            }
             let req = await this.internal._createRequest(SmuleUrls.CfireSync, {campfireId})
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<CampfireSyncResult>(req)
@@ -2084,62 +1712,8 @@ export class Smule {
 
     // shit i try to test
     public TEST = {
-        // this requires vip i think
-        // idk it gives code 1012 but also no useful data? 
-        profileStats: async () => {
-            let req = await this.internal._createRequest(SmuleUrls.AccountProfileStats, { period: "WEEK" })
-            if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<any>(req)
-        },
-
-        statisticsYearly: async () => {
-            let req = await this.internal._createRequest(SmuleUrls.AccountStatisticsYearly, {})
-            if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<any>(req)
-        },
-
-        // this does NOTHING
-        rewardCoins: async () => {
-            let req = await this.internal._createRequest(SmuleUrls.StoreRewardCoins, { rewardType: 7 })
-            if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<any>(req)
-        },
-
-        // this errors out with code 1012
-        inviteViaChat: async (accountIds: number[], performanceKey: string) => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to invite via chat.")
-                return
-            }
-            let req = await this.internal._createRequest(SmuleUrls.InviteSend, { accountIds, performanceKey })
-            this.internal._handleNon200(req)
-            return this.internal._getResponseData<any>(req)
-        },
-
-        fetchRecList: async (arrKey: string, topicId: number, cursor = "start", limit = 10, sort = "HOT") => {
-            if (!this.account.isLoggedIn()) {
-                _error("You must be logged in in order to fetch.")
-                return
-            }
-            let req = await this.internal._createRequest(SmuleUrls.PerformanceListRec, { arrKey, topicId, cursor, limit, sort })
-            if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<any>(req)
-        },
-
-        fetchCreditPlans: async () => {
-            let req = await this.internal._createRequest(SmuleUrls.StoreCreditPlans, {})
-            if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<any>(req)
-        },
-        reportSubscription: async (receipt: string, receiptSignature: any, sku: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.StoreSubscriptionUpdate, { receipt, receiptSignature, sku })
-            if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<any>(req)
-        },
-        giftGiveVip: async (sku: string, receipt: string, receiptSignature: any, receiverAccId: number) => {
-            let req = await this.internal._createRequest(SmuleUrls.GiftGiveVip, { sku, receipt, receiptSignature, recipientId: receiverAccId })
-            if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<any>(req)
+        runRawRequest: async (url: string, data: any) => {
+            return await this.internal._createRequest(url, data)
         }
     }
 }

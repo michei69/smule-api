@@ -35,13 +35,14 @@
 //             (get it? cause you yap in the chat?)
 
 import type { SmuleChatContainer, SmuleChatState, SmulePartnerStatus } from "./smule-chat-types"
-import { Client, client, xml } from "@xmpp/client"
+import { type Client, client, xml } from "@xmpp/client"
 import type { AccountIcon } from "./smule-types"
 import { SmuleUrls } from "./smule-urls"
 import { Element } from "@xmpp/xml"
 import EventEmitter from "events"
 import { JID } from "@xmpp/jid"
 
+//TODO
 export class SmuleLiveChat {
     public events: EventEmitter = new EventEmitter()
     public state: SmuleChatState = "closed"
