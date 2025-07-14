@@ -1,18 +1,18 @@
 //TODO
 
 import { Smule } from "./smule";
-import type { SmuleSession } from "./smule-types";
+import type { SmuleSession } from "./types/smule-types";
 import { SmuleDotCom } from "./smuledotcom";
 
 export { Smule, SmuleDotCom }
 export type { SmuleSession }
 
 // TODO: move stuff that shouldn't be exported OUT of these files
-export * from "./smuledotcom-types"
-export * from "./smule-midi-types"
-export * from "./smule-chat-types"
+export * from "./types/smuledotcom-types"
+export * from "./types/smule-midi-types"
+export * from "./types/smule-chat-types"
 export * from "./smule-requests"
-export * from "./smule-types"
+export * from "./types/smule-types"
 export * from "./util"
 
 // TODO: integrate smule-effects into smule, maybe? i'm not exporting it nuh-uh

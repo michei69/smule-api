@@ -34,9 +34,9 @@
 //                             yapper
 //             (get it? cause you yap in the chat?)
 
-import type { SmuleChatContainer, SmuleChatState, SmulePartnerStatus } from "./smule-chat-types"
+import type { SmuleChatContainer, SmuleChatState, SmulePartnerStatus } from "./types/smule-chat-types"
 import { type Client, client, xml } from "@xmpp/client"
-import type { AccountIcon } from "./smule-types"
+import type { AccountIcon } from "./types/smule-types"
 import { SmuleUrls } from "./smule-urls"
 import { Element } from "@xmpp/xml"
 import EventEmitter from "events"

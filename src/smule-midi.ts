@@ -32,7 +32,7 @@
 // ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀⠀⣸⣿⣿⣿⣿⣿⣿⣿⣿⡇⠘⣿⣿⡿⣡⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢟⣦⡀⠀⠸⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
 // ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⢀⣀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⢀⣙⣟⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣘⣛⣻⣦⢀⣀⣙⣛⣛⣛⣛⣻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
 import * as midiParser from "midi-file";
-import { SmuleUserSinging, type SmuleLyric, type SmuleLyricsData, type SmuleMidiData, type SmulePitchesData } from "./smule-midi-types";
+import { SmuleUserSinging, type SmuleLyric, type SmuleLyricsData, type SmuleMidiData, type SmulePitchesData } from "./types/smule-midi-types";
 
 //TODO: finish this lol
 export namespace SmuleMIDI {

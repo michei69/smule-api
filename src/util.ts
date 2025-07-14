@@ -1,4 +1,4 @@
-import { SmuleSession, type ArrExtended } from "./smule-types"
+import { SmuleSession, type ArrExtended } from "./types/smule-types"
 
 export namespace Util {
     export function getParametersFromUrl(url: string) {

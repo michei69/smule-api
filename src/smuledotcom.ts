@@ -14,8 +14,8 @@
 // ⠀⠀⠀⠀⠈⠷⣄⠉⢲⡀⠀⠀⠀⠀⠀⠀⠀⠀⠐⠊⠀⠀⠀⢠⠾⠁⠀⠀⠀⠀⠀
 // ⠀⠀⠀⠀⠀⠀⠙⢆⠈⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠋⠀⠀⠀⠀⠀⠀⠀
 // ⠀⠀⠀⠀⠀⠀⠀⠀⠡⠤⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-import type { SDCArr, SDCArrSongConfig, SDCDetectLanguageResponse, SDCGeneratedSegmentsResponse, SDCLoginResult, SDCResourceCreationResult, SDCSaveArrResponse } from "./smuledotcom-types.js";
-import type { ApiResponse } from "./smule-types.js";
+import type { SDCArr, SDCArrSongConfig, SDCDetectLanguageResponse, SDCGeneratedSegmentsResponse, SDCLoginResult, SDCResourceCreationResult, SDCSaveArrResponse } from "./types/smuledotcom-types.js";
+import type { ApiResult } from "./types/smule-types.js";
 import axios, { type AxiosInstance } from "axios";
 import * as crypto from "crypto"
 
@@ -208,7 +208,7 @@ export class SmuleDotCom {
         console.log(this.getUploadDataFromHtml(initReq.data))
 
         const req = await this.axiosInst.post(`${uploadUrl}`, temp)
-        const data: ApiResponse<SDCResourceCreationResult> = req.data
+        const data: ApiResult<SDCResourceCreationResult> = req.data
         return {
             artist: "",
             audioData: {
@@ -376,6 +376,6 @@ export class SmuleDotCom {
             }
         })
 
-        return req.data as ApiResponse<{}>
+        return req.data as ApiResult<{}>
     }
 }

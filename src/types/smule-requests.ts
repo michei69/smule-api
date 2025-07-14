@@ -29,27 +29,68 @@
 */
 
 import type { EnsembleType, PerformancesFillStatus, PerformanceSortMethod, PerformancesSortOrder, SearchResultSort, SearchResultType } from "./smule-types"
+import { randomUUID } from "crypto"
 
-// should we let the user change this?
-export const BluestacksDevice = {
-    "carrierCountry": "us",
-    "country": "US",
-    "deviceId": "a:198de726-8de9-4b60-858e-cef5abaf5a59",
-    "deviceType": "AND",
-    "googlePlayServices": "21.26.21 (100800-387928701)",
-    "hasMail": true,
-    "lang": "en",
-    "limitAdTrack": false,
-    "locale": "en_US",
-    "machine": "SM-S908E",
-    "manufacturer": "samsung",
-    "os": "9",
-    "product": "b0qxxx",
-    "screenSize": "large",
-    "script": ""
+// TODO: implement custom devices (unless LoginCommon.device = new Device() works)
+// TODO: rearrange stuff, its a mess, and im tired
+
+/**
+ * An instance of a device, required for certain requests.
+ */
+export class Device {
+    carrierCountry = "us"
+    country = "US"
+    deviceId = "a:198de726-8de9-4b60-858e-cef5abaf5a59"
+    deviceType = "AND"
+    googlePlayServices = "21.26.21 (100800-387928701)"
+    hasMail = true
+    lang = "en"
+    limitAdTrack = false
+    locale = "en_US"
+    machine = "SM-S908E"
+    manufacturer = "samsung"
+    os = "9"
+    product = "b0qxxx"
+    screenSize = "large"
+    script = ""
+
+    constructor(
+        carrierCountry: string = "us",
+        country: string = "US",
+        deviceId: string = "a:" + randomUUID(),
+        deviceType: "AND" | "IOS" = "AND", // untested
+        googlePlayServices: string = "21.26.21 (100800-387928701)",
+        hasMail: boolean = true,
+        lang: string = "en",
+        limitAdTrack: boolean = false,
+        locale: string = "en_US",
+        machine: string = "SM-S908E",
+        manufacturer: string = "samsung",
+        os: string = "9",
+        product: string = "b0qxxx",
+        screenSize: string = "large",
+        script = ""
+    ) {
+        this.carrierCountry = carrierCountry
+        this.country = country
+        this.deviceId = deviceId
+        this.deviceType = deviceType
+        this.googlePlayServices = googlePlayServices
+        this.hasMail = hasMail
+        this.lang = lang
+        this.limitAdTrack = limitAdTrack
+        this.locale = locale
+        this.machine = machine
+        this.manufacturer = manufacturer
+        this.os = os
+        this.product = product
+        this.screenSize = screenSize
+        this.script = script
+    }
 }
+export const BluestacksDevice = new Device()
 export const LoginCommon = {
-    "advId": "2662dd3a-5cf2-4eae-9329-ce1849f43f6f", // this could be randomized
+    "advId": randomUUID(), //"2662dd3a-5cf2-4eae-9329-ce1849f43f6f", // this could be randomized
     "device": BluestacksDevice,
     "automaticLogin": true,
     "playerId": 0,
@@ -582,5 +623,37 @@ export class PerformanceCreateRequest {
         if (ensembleType != "SOLO") {
             this.trackPartId = parseInt(trackPartId as unknown as string)
         }
+    }
+}
+
+/**
+ * Used to request a list of performances for this song key with specific criterias
+ */
+export class PerformanceReq {
+    app: string = "sing_google"
+    arrKey: string = ""
+    fillStatus: PerformancesFillStatus = "SEED"
+    limit: number = 25
+    offset: number = 0
+    sort: PerformancesSortOrder = "RECENT"
+    video: boolean = undefined
+
+    /**
+     * Used to request a list of performances for this song key with these criterias
+     * 
+     * @param key - The arr key associated with the song.
+     * @param sort - The order in which performances should be sorted. Default is RECENT.
+     * @param fillStatus - The fill status of the performances. Default is ACTIVESEED.
+     * @param limit - The maximum number of performances to fetch. Default is 25.
+     * @param offset - The starting point for fetching performances. Default is 0.
+     * @param video - Whether to retrieve only video performances.
+     */
+    constructor(key: string, sort: PerformancesSortOrder = "RECENT", fillStatus: PerformancesFillStatus = 'ACTIVESEED', limit = 25, offset = 0, video?: boolean) {
+        this.arrKey = key
+        this.fillStatus = fillStatus
+        this.limit = limit
+        this.offset = offset
+        this.sort = sort
+        this.video = video
     }
 }

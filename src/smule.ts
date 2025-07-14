@@ -22,10 +22,11 @@
 // ⠠⢸⣿⣿⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⢀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣿⣿⣿⣿⣿⣿⣿⣿
 // ⠀⠛⣿⣿⣿⡿⠏⠀⠀⠀⠀⠀⠀⢳⣾⣿⣿⣿⣿⣿⣿⡶⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿
 // ⠀ ⠀⠉⠉⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣿⡿⡿⠿⠛⠙⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⠏⠉⠻⠿⠟⠁
-import type { AccountExploreResult, AccountIcon, ApiResponse, ArrByKeysResult, ArrResult, AutocompleteResult, AvTemplateCategoryListResult, CampfireExploreResult, CampfireSyncResult, CategoryListResult, CategorySongsResult, CommentLikesResult, EnsembleType, FolloweeResult, FollowersResult, FollowingResult, InviteListResult, InviteMeResult, LoginAsGuestResult, LoginResult, PerformanceByKeysResult, PerformanceCommentsResult, PerformanceCreateCommentResult, PerformanceCreateResult, PerformanceDetail, PerformanceDetailsResult, PerformanceIcon, PerformanceList, PerformancePartsResult, PerformanceResult, PerformancesByAvTemplateResult, PerformancesByUserResult, PerformancesFillStatus, PerformanceSortMethod, PerformancesSortOrder, PlaylistExploreResult, PlaylistGetResult, PreuploadResult, ProfileResult, ProfileViewsResult, SearchResult, SearchResultSort, SearchResultType, SettingsResult, SFAMExploreResult, SocialBlockListResult, SocialFeedListResult, SongbookResult, TrendingSearchResult, UsersLookupResult } from "./smule-types";
-import { AutocompleteRequest, AvTemplateCategoryListRequest, CategorySongsRequest, IsFollowingRequest, LoginAsGuestRequest, LoginRefreshRequest, LoginRequest, PerformanceCreateRequest, PerformancePartsRequest, PerformancesByUserRequest, PerformancesListRequest, PreuploadRequest, ProfileRequest, SearchRequest, SettingsRequest, SongbookRequest, UpdateFollowingRequest } from "./smule-requests";
-import { PerformanceReq, SmuleSession, SmuleErrorCode } from "./smule-types";
-import type { SmulePartnerStatus } from "./smule-chat-types";
+import type { ApiResult, PreuploadResult, PerformanceCreateResult, LoginAsGuestResult, LoginResult, PerformanceCommentsResult, PerformanceCreateCommentResult, SocialBlockListResult, InviteMeResult, InviteListResult, SongbookResult, CategorySongsResult, CategoryListResult, ArrResult, ArrByKeysResult, PerformanceByKeysResult, PerformancesByUserResult, PerformancesByAvTemplateResult, PerformancePartsResult, PerformanceDetailsResult, SearchResult, AvTemplateCategoryListResult, PlaylistExploreResult, PlaylistGetResult, AccountExploreResult, SocialFeedListResult, SettingsResult, AccountLookupResult, SingUserProfileResult, SocialIsFollowingResult, SocialFolloweesResult, SocialFollowersResult, SocialCommentLikesResult, AccountProfileStatsViewsResult, PerformanceResult, RecTrendingSearchResult, SearchAutocompleteResult, SFamListResult, CampfireListResult } from "./types/smule-results";
+import { AutocompleteRequest, AvTemplateCategoryListRequest, CategorySongsRequest, IsFollowingRequest, LoginAsGuestRequest, LoginRefreshRequest, LoginRequest, PerformanceCreateRequest, PerformancePartsRequest, PerformanceReq, PerformancesByUserRequest, PerformancesListRequest, PreuploadRequest, ProfileRequest, SearchRequest, SettingsRequest, SongbookRequest, UpdateFollowingRequest } from "./types/smule-requests";
+import type { AccountIcon, CampfireSyncResult, EnsembleType, PerformanceDetail, PerformanceIcon, PerformanceList, PerformancesFillStatus, PerformanceSortMethod, PerformancesSortOrder, SearchResultSort, SearchResultType, SFamList } from "./types/smule-types";
+import { SmuleSession, SmuleErrorCode } from "./types/smule-types";
+import type { SmulePartnerStatus } from "./types/smule-chat-types";
 import { CustomFormData, SmuleUtil, Util } from "./util";
 import axios, { type AxiosResponse } from "axios";
 import { SmuleLiveChat } from "./smule-live-chat";
@@ -173,7 +174,7 @@ export class Smule {
          */
         _handleNon200: (response: AxiosResponse): boolean => {
             if (response.status == 200) {
-                let data: ApiResponse<any> = response.data
+                let data: ApiResult<any> = response.data
                 if (data.status.code == 0) return true
                 else {
                     _warn(`[${response.request.path}] Got ${data.status.code} - ${data.status.message ?? SmuleErrorCode[data.status.code]}`)
@@ -254,7 +255,7 @@ export class Smule {
         },
 
         _getResponseData: <T>(response: AxiosResponse) => {
-            let data = response.data as ApiResponse<T>
+            let data = response.data as ApiResult<T>
             return data.data as T
         },
 
@@ -381,7 +382,7 @@ export class Smule {
             byIds: async (accountIds: number[]) => {
                 let req = await this.internal._createRequest(SmuleUrls.AccountLookup, { accountIds })
                 if (!this.internal._handleNon200(req)) return
-                return this.internal._getResponseData<UsersLookupResult>(req)
+                return this.internal._getResponseData<AccountLookupResult>(req)
             },
 
             /**
@@ -478,7 +479,7 @@ export class Smule {
         fetchSelf: async () => {
             let req = await this.internal._createRequest(SmuleUrls.SingUserProfileMe, { includeActiveState: false })
             if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<ProfileResult>(req)
+            return this.internal._getResponseData<SingUserProfileResult>(req)
         },
 
         /**
@@ -489,7 +490,7 @@ export class Smule {
         fetchOne: async (accountId: number) => {
             let req = await this.internal._createRequest(SmuleUrls.SingUserProfile, new ProfileRequest(accountId))
             if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<ProfileResult>(req)
+            return this.internal._getResponseData<SingUserProfileResult>(req)
         }
     }
 
@@ -674,7 +675,7 @@ export class Smule {
         isFollowingUsers: async (accountIds: number[]) => {
             let req = await this.internal._createRequest(SmuleUrls.SocialIsFollowing, new IsFollowingRequest(accountIds))
             if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<FollowingResult>(req)
+            return this.internal._getResponseData<SocialIsFollowingResult>(req)
         },
 
         /**
@@ -732,7 +733,7 @@ export class Smule {
         fetchFollowings: async (accountId: number) => {
             let req = await this.internal._createRequest(SmuleUrls.SocialFollowee, { accountId })
             if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<FolloweeResult>(req)
+            return this.internal._getResponseData<SocialFolloweesResult>(req)
         },
 
         /**
@@ -744,7 +745,7 @@ export class Smule {
         fetchFollowers: async (accountId: number) => {
             let req = await this.internal._createRequest(SmuleUrls.SocialFollower, { accountId })
             if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<FollowersResult>(req)
+            return this.internal._getResponseData<SocialFollowersResult>(req)
         },
 
         /**
@@ -808,7 +809,7 @@ export class Smule {
                 performanceKey
             })
             if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<CommentLikesResult>(req)
+            return this.internal._getResponseData<SocialCommentLikesResult>(req)
         },
 
         /**
@@ -919,7 +920,7 @@ export class Smule {
         fetchProfileViews: async (period: "WEEK" | "MONTH" | "QUARTER" = "WEEK", cursor = "start", limit = 10) => {
             let req = await this.internal._createRequest(SmuleUrls.AccountProfileStatsViews, { period, cursor, limit })
             if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<ProfileViewsResult>(req)
+            return this.internal._getResponseData<AccountProfileStatsViewsResult>(req)
         },
 
         /**
@@ -1446,7 +1447,7 @@ export class Smule {
         fetchTrending: async () => {
             let req = await this.internal._createRequest(SmuleUrls.RecTsrch, {})
             if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<TrendingSearchResult>(req)
+            return this.internal._getResponseData<RecTrendingSearchResult>(req)
         },
 
         /**
@@ -1484,7 +1485,7 @@ export class Smule {
         fetchAutocomplete: async (query: string, limit = 5) => {
             let req = await this.internal._createRequest(SmuleUrls.SearchAutocomplete, new AutocompleteRequest(query, limit))
             if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<AutocompleteResult>(req)
+            return this.internal._getResponseData<SearchAutocompleteResult>(req)
         }
     }
 
@@ -1592,7 +1593,7 @@ export class Smule {
         fetchGroups: async (cursor = "start", limit = 10, sortBy = "RECOMMENDED") => {
             let req = await this.internal._createRequest(SmuleUrls.SfamList, { cursor, limit, sortBy })
             if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<SFAMExploreResult>(req)
+            return this.internal._getResponseData<SFamListResult>(req)
         },
 
         /**
@@ -1607,7 +1608,7 @@ export class Smule {
             let self = await this.account.fetchSelf()
             let req = await this.internal._createRequest(SmuleUrls.CfireList, { accountId: self.profile.accountIcon.accountId, cursor, limit, sort })
             if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<CampfireExploreResult>(req)
+            return this.internal._getResponseData<CampfireListResult>(req)
         },
 
         /**
