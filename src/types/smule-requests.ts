@@ -31,8 +31,9 @@
 import type { EnsembleType, PerformancesFillStatus, PerformanceSortMethod, PerformancesSortOrder, SearchResultSort, SearchResultType } from "./smule-types"
 import { randomUUID } from "crypto"
 
-// TODO: implement custom devices (unless LoginCommon.device = new Device() works)
-// TODO: rearrange stuff, its a mess, and im tired
+// TODO: rewrite some of those requests
+// TODO: cover more apis
+// TODO: move certain smaller requests (that dont have that much useless data, unlike others) directly inside of `smule.ts`
 
 /**
  * An instance of a device, required for certain requests.
@@ -88,237 +89,31 @@ export class Device {
         this.script = script
     }
 }
-export const BluestacksDevice = new Device()
-export const LoginCommon = {
-    "advId": randomUUID(), //"2662dd3a-5cf2-4eae-9329-ce1849f43f6f", // this could be randomized
-    "device": BluestacksDevice,
-    "automaticLogin": true,
-    "playerId": 0,
-    "reactivateSubmittedAccount": false,
-    "tzOffset": 7200,
-    "vorgom": false,
-    "welcome": false
-}
 
-//* Requests
-export class LoginRefreshRequest {
-    // Straight up copypasted from bluestacks
-    private obj = {
-        "common": LoginCommon,
-        "refreshToken": "r2__DNdEgYu3HGGEb9qB6x6wjVZWrqi5vf0XnMmL6dU2Zta7dNsbYBLu0C7x/CAITgUwM7JCYDdA1pJG8z0tlDJ1fwBwSYaeT1A0mm6LnG5bgpj4dMHKc6kkkeXWnuhLpOSC68PgnQs5WZA3R5wmeY4gXw6JUWcN8hfivoiQig=="
-    }
-    constructor(refreshToken: string) {
-        this.obj.refreshToken = refreshToken
-    }
-    toJSON() {
-        return this.obj
-    }
-}
-export class ListEntitlementsRequest { 
-    toJSON() {return {}}
-}
-export class SettingsRequest {
-    // while yes i could manually feed it the settings strings,
-    // theres no real reason why i shouldnt just list them all lol
-    toJSON() {
-        return {
-            "device": BluestacksDevice,
-            "settingsIds": [
-              "sing_google.subscriptions",
-              "sing_google.stream_values",
-              "sing_google.user_messages",
-              "sing_google.buy_msg",
-              "sing_google.tutorial",
-              "sing_google.get_more_credits",
-              "sing_google.cccp",
-              "sing_google.songbook",
-              "sing_google.preSing",
-              "sing_google.ftuxBlocking",
-              "sing_google.songUpsell",
-              "sing_google.explore",
-              "sing_google.mediaPlayer",
-              "sing_google.ads",
-              "sing_google.smeaks",
-              "sing.profile",
-              "sing.playlists",
-              "sing.audio",
-              "sing.audioFilters",
-              "sing.arr",
-              "sing.suggestions",
-              "sing.onboarding",
-              "sing.cccp",
-              "sing.acappella",
-              "sing.video",
-              "sing.videoEncoding",
-              "sing.chat",
-              "sing.search",
-              "sing.videoFX",
-              "sing.videoStyles",
-              "sing.avqSurvey",
-              "sing.paywall",
-              "sing_google.subscriptions",
-              "sing.freeform",
-              "dfp",
-              "appLaunch",
-              "sing.crm",
-              "sing.boost",
-              "sing.share",
-              "sing.feed",
-              "sing.findFriendsModule",
-              "sing.localization",
-              "sing.seeds",
-              "sing.nowPlaying",
-              "sing.registration",
-              "sing.upload",
-              "sing.families",
-              "sing.appSettings",
-              "campfire.avStreamQuality",
-              "campfire.config",
-              "sing.virtualCurrency",
-              "campfire.audioFilters",
-              "links",
-              "sing.singingFlow",
-              "sing.explore",
-              "sing.songbookUsability",
-              "sing.templates",
-              "sing.notifications",
-              "sing.topics",
-              "sing.banners",
-              "sing.shortJoins",
-              "sing.vcs",
-              "sing.notifications",
-              "sing.customPitchMarker",
-              "sing.tipping",
-              "appFamily"
-            ]
-        }
+
+export class LoginCommonData {
+    advId: string = randomUUID()
+    device: Device = new Device()
+    automaticLogin: boolean = true
+    playerId: number = 0
+    reactivateSubmittedAccount: boolean = false
+    tzOffset: number = 7200
+    vorgom: boolean = false
+    welcome: boolean = false
+
+    constructor(device?: Device) {
+        if (device) this.device = device
     }
 }
-export class LoginInfoRequest {
-    // see SettingsRequest::toJSON for explanation
-    toJSON() {
-        return {
-            "reqInfo": [
-              "notificationCount",
-              "feedActivity",
-              "performanceCount",
-              "apiHosts"
-            ]
-          }
-    }
-}
-export class DeviceSetRequest {
-    toJSON() {
-        return {
-            device: BluestacksDevice
-        }
-    }
-}
-export class AccessTokenRequest {
-    toJSON() {
-        return {
-            device: BluestacksDevice,
-            "targetSystem": "IRIS" // No idea?
-        }
-    }
-}
-export class FolloweeRequest {
-    private accountId = "2674243199"
-    constructor(accountId: string|number) {
-        this.accountId = accountId + ""
-    }
-    toJSON() {
-        return {
-            accountId: this.accountId
-        }
-    }
-}
-export class SongbookRequest {
-    private data = {
-        cat1SongsCursor: "start",
-        cat1SongsLimit: 10
-    }
-    constructor(cursor = "start", limit = 10) {
-        this.data.cat1SongsCursor = cursor
-        this.data.cat1SongsLimit = limit
-    }
-    toJSON() {
-        return this.data
-    }
-}
-export class PreferancesRequest {
-    toJSON() {
-        return {
-            names: [
-                "SPARK_PUSH_DISABLE",
-                "SPARK_READRECEIPT_DISABLE",
-                "CHAT_STATE_DISABLE"
-            ]
-        }
-    }
-}
-export class CategorySongsRequest {
-    private data = {
-        cursor: "start",
-        limit: 10,
-        id: 9998,
-        duetAccountId: undefined
-    }
-    constructor(cursor = "start", limit = 10, categoryId = 9998, duetAccountId?: number) {
-        this.data.cursor = cursor
-        this.data.limit = limit
-        this.data.id = categoryId
-        if (duetAccountId) this.data.duetAccountId = duetAccountId
-    }
-    toJSON() {
-        return this.data
-    }
-}
-export class UsersLookupRequest {
-    private data = {
-        accountIds: []
-    }
-    constructor(accountIds: Array<number> = []) {
-        this.data.accountIds = accountIds
-    }
-    toJSON() {
-        return this.data
-    }
-}
-export class PerformanceByKeysRequest {
-    private data = {
-        performanceKeys: []
-    }
-    constructor(performanceKeys: Array<string> = []) {
-        this.data.performanceKeys = performanceKeys
-    }
-    toJSON() {
-        return this.data
-    }
-}
-export class PerformancesByUserRequest {
-    private data = {
-        "accountId": 0,
-        "app": "sing_google",
-        "collapsed": true,
-        "fillStatus": "FILLED",
-        "limit": 20,
-        "offset": 0,
-        "sortMethod": "NEWEST_FIRST"
-    }
-    constructor(accountId: number, limit = 20, offset = 0) {
-        this.data.accountId = accountId
-        this.data.limit = limit
-        this.data.offset = offset
-    }
-    toJSON() { 
-        return this.data
-    }
-}
+//#region //* Login requests *\\
 export class LoginAsGuestRequest {
+    loginCommon: LoginCommonData = new LoginCommonData()
+    constructor(loginCommon?: LoginCommonData) {
+        if (loginCommon) this.loginCommon = loginCommon
+    }
     toJSON() {
         return {
-            common: LoginCommon,
+            common: this.loginCommon,
             forceNewPlayer: true,
             lookupAccount: true,
             settingsIds: [
@@ -393,51 +188,25 @@ export class LoginAsGuestRequest {
 }
 export class LoginRequest {
     private data = {
-        ...LoginCommon,
+        ...new LoginCommonData(),
         email: "",
         password: ""
     }
-    constructor(email: string, password: string) {
+    constructor(email: string, password: string, loginCommon?: LoginCommonData) {
         this.data.email = email
         this.data.password = password
+        if (loginCommon)
+            this.data = {...this.data, ...loginCommon}
     }
 
     toJSON() {
         return this.data
     }
 }
-export class PerformancesListRequest {
-    private data = {
-        "fillStatus": "ACTIVESEED",
-        "limit": 25,
-        "offset": 0,
-        "sort": "SUGGESTED",
-        "video": false
-    }
-    constructor(sort: PerformancesSortOrder = "SUGGESTED", fillStatus: PerformancesFillStatus = "ACTIVESEED", limit = 25, offset = 0) {
-        this.data.fillStatus = fillStatus
-        this.data.limit = limit
-        this.data.offset = offset
-        this.data.sort = sort
-    }
 
-    toJSON() {
-        return this.data
-    }
-}
-export class AutocompleteRequest {
-    private data = {
-        limit: 5,
-        term: ""
-    }
-    constructor (term: string, limit: number) {
-        this.data.limit = limit
-        this.data.term = term
-    }
-    toJSON() {
-        return this.data
-    }
-}
+//#endregion
+
+//#region //* Search requests *\\
 export class SearchRequest {
     private data = {
         "cursor": "start",
@@ -457,14 +226,38 @@ export class SearchRequest {
         return this.data
     }
 }
-export class ProfileRequest {
+export class SearchAutocompleteRequest {
     private data = {
-        accountId: 0,
-        includeActiveState: true
+        limit: 5,
+        term: ""
     }
-    constructor(accountId: number) {
-        this.data.accountId = accountId
+    constructor (term: string, limit: number) {
+        this.data.limit = limit
+        this.data.term = term
     }
+    toJSON() {
+        return this.data
+    }
+}
+
+//#endregion
+
+//#region //* Performance requests *\\
+export class PerformancesListRequest {
+    private data = {
+        "fillStatus": "ACTIVESEED",
+        "limit": 25,
+        "offset": 0,
+        "sort": "SUGGESTED",
+        "video": false
+    }
+    constructor(sort: PerformancesSortOrder = "SUGGESTED", fillStatus: PerformancesFillStatus = "ACTIVESEED", limit = 25, offset = 0) {
+        this.data.fillStatus = fillStatus
+        this.data.limit = limit
+        this.data.offset = offset
+        this.data.sort = sort
+    }
+
     toJSON() {
         return this.data
     }
@@ -485,49 +278,6 @@ export class PerformancePartsRequest {
         this.data.sortMethod = sortMethod
         this.data.limit = limit
         this.data.offset = offset
-    }
-    toJSON() {
-        return this.data
-    }
-}
-export class IsFollowingRequest {
-    private data = {
-        accountIds: [],
-        apps: ["sing_google"]
-    }
-    constructor(accountIds: number[]) {
-        this.data.accountIds = accountIds
-    }
-    toJSON() {
-        return this.data
-    }
-}
-export class UpdateFollowingRequest {
-    private data = {
-        add: [],
-        content: "APP",
-        remove: []
-    }
-    constructor(accountIdsToAdd: number[], accountIdsToRemove: number[]) {
-        this.data.add = accountIdsToAdd
-        this.data.remove = accountIdsToRemove
-    }
-    toJSON() {
-        return this.data
-    }
-}
-export class AvTemplateCategoryListRequest {
-    private data = {
-        "category": "AUDIO",
-        "cursor": "start",
-        "limit": 25,
-        "avTemplateType": "STANDARD"
-    }
-    constructor(category = "AUDIO", cursor = "start", limit = 25, avTemplateType = "STANDARD") {
-        this.data.category = category
-        this.data.cursor = cursor
-        this.data.limit = limit
-        this.data.avTemplateType = avTemplateType
     }
     toJSON() {
         return this.data
@@ -655,5 +405,203 @@ export class PerformanceReq {
         this.offset = offset
         this.sort = sort
         this.video = video
+    }
+}
+
+//#endregion
+
+//#region //* Social requests *\\
+export class SingUserProfileRequest {
+    private data = {
+        accountId: 0,
+        includeActiveState: true
+    }
+    constructor(accountId: number) {
+        this.data.accountId = accountId
+    }
+    toJSON() {
+        return this.data
+    }
+}
+
+export class IsFollowingRequest {
+    private data = {
+        accountIds: [],
+        apps: ["sing_google"]
+    }
+    constructor(accountIds: number[]) {
+        this.data.accountIds = accountIds
+    }
+    toJSON() {
+        return this.data
+    }
+}
+export class UpdateFollowingRequest {
+    private data = {
+        add: [],
+        content: "APP",
+        remove: []
+    }
+    constructor(accountIdsToAdd: number[], accountIdsToRemove: number[]) {
+        this.data.add = accountIdsToAdd
+        this.data.remove = accountIdsToRemove
+    }
+    toJSON() {
+        return this.data
+    }
+}
+
+//#endregion
+
+//#region //* Arr requests *\\
+export class SongbookRequest {
+    private data = {
+        cat1SongsCursor: "start",
+        cat1SongsLimit: 10
+    }
+    constructor(cursor = "start", limit = 10) {
+        this.data.cat1SongsCursor = cursor
+        this.data.cat1SongsLimit = limit
+    }
+    toJSON() {
+        return this.data
+    }
+}
+
+export class CategoryRequest {
+    private data = {
+        cursor: "start",
+        limit: 10,
+        id: 9998,
+        duetAccountId: undefined
+    }
+    constructor(cursor = "start", limit = 10, categoryId = 9998, duetAccountId?: number) {
+        this.data.cursor = cursor
+        this.data.limit = limit
+        this.data.id = categoryId
+        if (duetAccountId) this.data.duetAccountId = duetAccountId
+    }
+    toJSON() {
+        return this.data
+    }
+}
+
+//#endregion
+
+//* Other requests
+export class SettingsRequest {
+    device: Device = new Device()
+    constructor(device?: Device) { if (device) this.device = device }
+    // while yes i could manually feed it the settings strings,
+    // theres no real reason why i shouldnt just list them all lol
+    toJSON() {
+        return {
+            "device": this.device,
+            "settingsIds": [
+              "sing_google.subscriptions",
+              "sing_google.stream_values",
+              "sing_google.user_messages",
+              "sing_google.buy_msg",
+              "sing_google.tutorial",
+              "sing_google.get_more_credits",
+              "sing_google.cccp",
+              "sing_google.songbook",
+              "sing_google.preSing",
+              "sing_google.ftuxBlocking",
+              "sing_google.songUpsell",
+              "sing_google.explore",
+              "sing_google.mediaPlayer",
+              "sing_google.ads",
+              "sing_google.smeaks",
+              "sing.profile",
+              "sing.playlists",
+              "sing.audio",
+              "sing.audioFilters",
+              "sing.arr",
+              "sing.suggestions",
+              "sing.onboarding",
+              "sing.cccp",
+              "sing.acappella",
+              "sing.video",
+              "sing.videoEncoding",
+              "sing.chat",
+              "sing.search",
+              "sing.videoFX",
+              "sing.videoStyles",
+              "sing.avqSurvey",
+              "sing.paywall",
+              "sing_google.subscriptions",
+              "sing.freeform",
+              "dfp",
+              "appLaunch",
+              "sing.crm",
+              "sing.boost",
+              "sing.share",
+              "sing.feed",
+              "sing.findFriendsModule",
+              "sing.localization",
+              "sing.seeds",
+              "sing.nowPlaying",
+              "sing.registration",
+              "sing.upload",
+              "sing.families",
+              "sing.appSettings",
+              "campfire.avStreamQuality",
+              "campfire.config",
+              "sing.virtualCurrency",
+              "campfire.audioFilters",
+              "links",
+              "sing.singingFlow",
+              "sing.explore",
+              "sing.songbookUsability",
+              "sing.templates",
+              "sing.notifications",
+              "sing.topics",
+              "sing.banners",
+              "sing.shortJoins",
+              "sing.vcs",
+              "sing.notifications",
+              "sing.customPitchMarker",
+              "sing.tipping",
+              "appFamily"
+            ]
+        }
+    }
+}
+export class PreferencesRequest {
+    toJSON() {
+        return {
+            names: [
+                "SPARK_PUSH_DISABLE",
+                "SPARK_READRECEIPT_DISABLE",
+                "CHAT_STATE_DISABLE"
+            ]
+        }
+    }
+}
+//* required for iris, but i havent covered that thing yet
+// export class AccessTokenRequest {
+//     toJSON() {
+//         return {
+//             device: BluestacksDevice,
+//             "targetSystem": "IRIS" // No idea?
+//         }
+//     }
+// }
+export class AvTemplateCategoryListRequest {
+    private data = {
+        "category": "AUDIO",
+        "cursor": "start",
+        "limit": 25,
+        "avTemplateType": "STANDARD"
+    }
+    constructor(category = "AUDIO", cursor = "start", limit = 25, avTemplateType = "STANDARD") {
+        this.data.category = category
+        this.data.cursor = cursor
+        this.data.limit = limit
+        this.data.avTemplateType = avTemplateType
+    }
+    toJSON() {
+        return this.data
     }
 }

@@ -23,7 +23,7 @@
 // ⠀⠛⣿⣿⣿⡿⠏⠀⠀⠀⠀⠀⠀⢳⣾⣿⣿⣿⣿⣿⣿⡶⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿
 // ⠀ ⠀⠉⠉⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣿⡿⡿⠿⠛⠙⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⠏⠉⠻⠿⠟⠁
 import type { ApiResult, PreuploadResult, PerformanceCreateResult, LoginAsGuestResult, LoginResult, PerformanceCommentsResult, PerformanceCreateCommentResult, SocialBlockListResult, InviteMeResult, InviteListResult, SongbookResult, CategorySongsResult, CategoryListResult, ArrResult, ArrByKeysResult, PerformanceByKeysResult, PerformancesByUserResult, PerformancesByAvTemplateResult, PerformancePartsResult, PerformanceDetailsResult, SearchResult, AvTemplateCategoryListResult, PlaylistExploreResult, PlaylistGetResult, AccountExploreResult, SocialFeedListResult, SettingsResult, AccountLookupResult, SingUserProfileResult, SocialIsFollowingResult, SocialFolloweesResult, SocialFollowersResult, SocialCommentLikesResult, AccountProfileStatsViewsResult, PerformanceResult, RecTrendingSearchResult, SearchAutocompleteResult, SFamListResult, CampfireListResult } from "./types/smule-results";
-import { AutocompleteRequest, AvTemplateCategoryListRequest, CategorySongsRequest, IsFollowingRequest, LoginAsGuestRequest, LoginRefreshRequest, LoginRequest, PerformanceCreateRequest, PerformancePartsRequest, PerformanceReq, PerformancesByUserRequest, PerformancesListRequest, PreuploadRequest, ProfileRequest, SearchRequest, SettingsRequest, SongbookRequest, UpdateFollowingRequest } from "./types/smule-requests";
+import { SearchAutocompleteRequest, AvTemplateCategoryListRequest, CategoryRequest, IsFollowingRequest, LoginAsGuestRequest, LoginCommonData, LoginRequest, PerformanceCreateRequest, PerformancePartsRequest, PerformanceReq, PerformancesListRequest, PreuploadRequest, SingUserProfileRequest, SearchRequest, SettingsRequest, SongbookRequest, UpdateFollowingRequest } from "./types/smule-requests";
 import type { AccountIcon, CampfireSyncResult, EnsembleType, PerformanceDetail, PerformanceIcon, PerformanceList, PerformancesFillStatus, PerformanceSortMethod, PerformancesSortOrder, SearchResultSort, SearchResultType, SFamList } from "./types/smule-types";
 import { SmuleSession, SmuleErrorCode } from "./types/smule-types";
 import type { SmulePartnerStatus } from "./types/smule-chat-types";
@@ -451,7 +451,7 @@ export class Smule {
                 this.session.expired = true // Must be expired in order to refresh
             }
 
-            let req = await this.internal._createRequest(SmuleUrls.LoginRefresh, new LoginRefreshRequest(this.session.refreshToken), false, false)
+            let req = await this.internal._createRequest(SmuleUrls.LoginRefresh, { common: new LoginCommonData(this.session.device), refreshToken: this.session.refreshToken }, false, false)
             if (!this.internal._handleNon200(req)) return false
 
             let res = this.internal._getResponseData<{ loginResult: LoginResult }>(req)
@@ -488,7 +488,7 @@ export class Smule {
          * @returns The user's details
          */
         fetchOne: async (accountId: number) => {
-            let req = await this.internal._createRequest(SmuleUrls.SingUserProfile, new ProfileRequest(accountId))
+            let req = await this.internal._createRequest(SmuleUrls.SingUserProfile, new SingUserProfileRequest(accountId))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SingUserProfileResult>(req)
         }
@@ -982,7 +982,7 @@ export class Smule {
          * @returns The songs
          */
         fetchFromCategory: async (cursor = "start", categoryId = 9998, limit = 10, duetAccountId?: number) => {
-            let req = await this.internal._createRequest(SmuleUrls.Category, new CategorySongsRequest(cursor, limit, categoryId))
+            let req = await this.internal._createRequest(SmuleUrls.Category, new CategoryRequest(cursor, limit, categoryId))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<CategorySongsResult>(req)
         },
@@ -1164,8 +1164,8 @@ export class Smule {
              * @param limit How many per page
              * @returns The performances
              */
-            byUser: async (accountId: number, limit = 20, offset = 0) => {
-                let req = await this.internal._createRequest(SmuleUrls.PerformanceParts, new PerformancesByUserRequest(accountId, limit, offset))
+            byUser: async (accountId: number, fillStatus: PerformancesFillStatus = "FILLED", sortMethod: PerformanceSortMethod = "NEWEST_FIRST", limit: number = 20, offset: number = 0) => {
+                let req = await this.internal._createRequest(SmuleUrls.PerformanceParts, new PerformancePartsRequest(accountId, fillStatus, sortMethod, limit, offset))
                 if (!this.internal._handleNon200(req)) return
                 return this.internal._getResponseData<PerformancesByUserResult>(req)
             },
@@ -1483,7 +1483,7 @@ export class Smule {
          * @returns The autocomplete suggestions
          */
         fetchAutocomplete: async (query: string, limit = 5) => {
-            let req = await this.internal._createRequest(SmuleUrls.SearchAutocomplete, new AutocompleteRequest(query, limit))
+            let req = await this.internal._createRequest(SmuleUrls.SearchAutocomplete, new SearchAutocompleteRequest(query, limit))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SearchAutocompleteResult>(req)
         }
@@ -1628,7 +1628,7 @@ export class Smule {
     // utterly useless but it's here if needed
     public settings = {
         fetch: async () => {
-            let req = await this.internal._createRequest(SmuleUrls.Settings, new SettingsRequest())
+            let req = await this.internal._createRequest(SmuleUrls.Settings, new SettingsRequest(this.session.device))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SettingsResult>(req)
         }

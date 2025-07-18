@@ -15,7 +15,7 @@
 // ⠀⠀⠀⠀⠀⠀⠙⢆⠈⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠋⠀⠀⠀⠀⠀⠀⠀
 // ⠀⠀⠀⠀⠀⠀⠀⠀⠡⠤⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 import type { SDCArr, SDCArrSongConfig, SDCDetectLanguageResponse, SDCGeneratedSegmentsResponse, SDCLoginResult, SDCResourceCreationResult, SDCSaveArrResponse } from "./types/smuledotcom-types.js";
-import type { ApiResult } from "./types/smule-types.js";
+import type { ApiResult } from "./types/smule-results.js";
 import axios, { type AxiosInstance } from "axios";
 import * as crypto from "crypto"
 

@@ -1,5 +1,7 @@
 // TODO: Document everything, and create new types for future Smule Results
 
+import { Device } from "./smule-requests";
+
 //#region //* Account and user stuff *\\
 export type AccountIcon = {
     accountId: number;
@@ -483,6 +485,7 @@ export class SmuleSession {
     refreshToken: string = ""
     isGuest: boolean = false
     expired: boolean = true
+    device: Device = new Device()
 
     // globe geolocation stuff
     // these are used for creating performances and such

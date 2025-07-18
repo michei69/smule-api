@@ -11,7 +11,7 @@ export type { SmuleSession }
 export * from "./types/smuledotcom-types"
 export * from "./types/smule-midi-types"
 export * from "./types/smule-chat-types"
-export * from "./smule-requests"
+export * from "./types/smule-requests"
 export * from "./types/smule-types"
 export * from "./util"
 
