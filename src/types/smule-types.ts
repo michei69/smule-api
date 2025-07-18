@@ -25,6 +25,12 @@ export type AccountIcon = {
     longitude?: number
 }
 
+export type Contact = {
+    emails: string[],
+    phoneNumbers: string[],
+    realName: string, // the name you have them saved as
+}
+
 export type Profile = {
     accountIcon: AccountIcon,
     apps: SMULE_APP[],
@@ -383,12 +389,12 @@ export type SFam = {
     loc: string, // location
     lang: string,
     picUrl: string,
-    sfamTag: string, //??
+    sfamTag: string, // sth like discord.gg/blahblah but for smule groups
     tags: string[],
-    enrollStatus: number, //??
-    approvalStatus: number //??
+    enrollStatus: number, // 0 = invitation only, 1 = join requests
+    approvalStatus: number // 0 = auto approve, 1 = manual approval
 }
-
+export type SFamMembershipType = "UNKNOWN" | "GUEST" | "PENDING_RQST" | "PENDING_INVTN" | "MEMBER" | "ADMIN"
 //#endregion
 
 
@@ -429,12 +435,13 @@ export type avTmplSegment = {
     tags: Array<any>
 }
 export type FeedItem = {
-    recId: string,
+    recId?: string, // your feed post
+    postId?: number, // group feed post
     subject?: AccountIcon,
-    action?: string|"LOVE",
-    count?: number,
+    action?: string|"LOVE"|"FamilyPost",
     actionTime?: Date,
-    source: string|"MYNW"|"GHPS",
+    count?: number,
+    source?: string|"MYNW"|"GHPS", // no fucking idea
     object: {
         performance?: PerformanceIcon
     }
@@ -452,7 +459,20 @@ export type Playlist = {
     imgUrl: string,
     trending: boolean
 }
-
+export type PlaylistIcon = {
+    playlistKey: string,
+    type: "ACCT", // i suppose account? maybe theres also SFAM?
+    visibility: PlaylistVisibility,
+    name: string,
+    webUrl: string,
+    tags: string[],
+    stats: {
+        itemsCount: number,
+    },
+    accountIcon: AccountIcon
+}
+export type PlaylistVisibility = "PUB"|"PRI"
+export type PlaylistSortMethod = "OLDEST_FIRST" | "NEWEST_FIRST"
 
 //* Miscellaneous
 /**
@@ -512,7 +532,13 @@ export const SmuleErrorCode = {
     1012: "VIP required",
     1013: "Subscription error / VIP required",
     10: "No result?",
-    1052: "Not enough coins"
+    1052: "Not enough coins",
+    2017: "Group waiting period not expired", // unsure what this actually means
+    2013: "Banned from group",
+    1044: "Group join limit reached",
+}
+export const SmuleRegisterErrorCode = {
+    13: "Account already exists"
 }
 
 export type SMULE_APP = "UNKNOWN"|"MINIPIANO"|"SMULEDOTCOM"|"SING"|"MINIPIANO_ANDROID"|"AUTORAP_IOS"|"AUTORAP_GOOG"|"SING_GOOGLE"|"STUDIO_IOS"|"STUDIO_ANDROID"|"SING_HUAWEI"|"UNRECOGNIZED"

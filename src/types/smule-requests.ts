@@ -187,8 +187,8 @@ export class LoginAsGuestRequest {
     }
 }
 export class LoginRequest {
+    private loginCommon: LoginCommonData = new LoginCommonData()
     private data = {
-        ...new LoginCommonData(),
         email: "",
         password: ""
     }
@@ -196,11 +196,14 @@ export class LoginRequest {
         this.data.email = email
         this.data.password = password
         if (loginCommon)
-            this.data = {...this.data, ...loginCommon}
+            this.loginCommon = loginCommon
     }
 
     toJSON() {
-        return this.data
+        return {
+            ...this.loginCommon,
+            ...this.data
+        }
     }
 }
 

@@ -22,10 +22,10 @@
 // ⠠⢸⣿⣿⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⢀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣿⣿⣿⣿⣿⣿⣿⣿
 // ⠀⠛⣿⣿⣿⡿⠏⠀⠀⠀⠀⠀⠀⢳⣾⣿⣿⣿⣿⣿⣿⡶⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿
 // ⠀ ⠀⠉⠉⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣿⡿⡿⠿⠛⠙⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⠏⠉⠻⠿⠟⠁
-import type { ApiResult, PreuploadResult, PerformanceCreateResult, LoginAsGuestResult, LoginResult, PerformanceCommentsResult, PerformanceCreateCommentResult, SocialBlockListResult, InviteMeResult, InviteListResult, SongbookResult, CategorySongsResult, CategoryListResult, ArrResult, ArrByKeysResult, PerformanceByKeysResult, PerformancesByUserResult, PerformancesByAvTemplateResult, PerformancePartsResult, PerformanceDetailsResult, SearchResult, AvTemplateCategoryListResult, PlaylistExploreResult, PlaylistGetResult, AccountExploreResult, SocialFeedListResult, SettingsResult, AccountLookupResult, SingUserProfileResult, SocialIsFollowingResult, SocialFolloweesResult, SocialFollowersResult, SocialCommentLikesResult, AccountProfileStatsViewsResult, PerformanceResult, RecTrendingSearchResult, SearchAutocompleteResult, SFamListResult, CampfireListResult } from "./types/smule-results";
+import type { ApiResult, PreuploadResult, PerformanceCreateResult, LoginAsGuestResult, LoginResult, PerformanceCommentsResult, PerformanceCreateCommentResult, SocialBlockListResult, InviteMeResult, InviteListResult, SongbookResult, CategorySongsResult, CategoryListResult, ArrResult, ArrByKeysResult, PerformanceByKeysResult, PerformancesByUserResult, PerformancesByAvTemplateResult, PerformancePartsResult, PerformanceDetailsResult, SearchResult, AvTemplateCategoryListResult, PlaylistExploreResult, PlaylistGetResult, AccountExploreResult, SocialFeedListResult, SettingsResult, AccountLookupResult, SingUserProfileResult, SocialIsFollowingResult, SocialFolloweesResult, SocialFollowersResult, SocialCommentLikesResult, AccountProfileStatsViewsResult, PerformanceResult, RecTrendingSearchResult, SearchAutocompleteResult, SFamListResult, CampfireListResult, UserUploadPictureResult, ContactFindResult, TopicOptionResult, PreferencesResult, SFamInfoResult, SFamMemberListResult, PlaylistViewResult, PerformanceBookmarkSeedResult, ArrBookmarkListResult } from "./types/smule-results";
 import { SearchAutocompleteRequest, AvTemplateCategoryListRequest, CategoryRequest, IsFollowingRequest, LoginAsGuestRequest, LoginCommonData, LoginRequest, PerformanceCreateRequest, PerformancePartsRequest, PerformanceReq, PerformancesListRequest, PreuploadRequest, SingUserProfileRequest, SearchRequest, SettingsRequest, SongbookRequest, UpdateFollowingRequest } from "./types/smule-requests";
-import type { AccountIcon, CampfireSyncResult, EnsembleType, PerformanceDetail, PerformanceIcon, PerformanceList, PerformancesFillStatus, PerformanceSortMethod, PerformancesSortOrder, SearchResultSort, SearchResultType, SFamList } from "./types/smule-types";
-import { SmuleSession, SmuleErrorCode } from "./types/smule-types";
+import type { AccountIcon, CampfireSyncResult, Contact, EnsembleType, PerformanceDetail, PerformanceIcon, PerformanceList, PerformancesFillStatus, PerformanceSortMethod, PerformancesSortOrder, PlaylistIcon, PlaylistSortMethod, PlaylistVisibility, SearchResultSort, SearchResultType, SFam, SFamList } from "./types/smule-types";
+import { SmuleSession, SmuleErrorCode, SmuleRegisterErrorCode } from "./types/smule-types";
 import type { SmulePartnerStatus } from "./types/smule-chat-types";
 import { CustomFormData, SmuleUtil, Util } from "./util";
 import axios, { type AxiosResponse } from "axios";
@@ -63,7 +63,7 @@ export namespace SmuleDigest {
         multiPartBody: CustomFormData = null,
     ) {
         let neededParameters = {}
-        let required = ["appVersion", "app", "appVariant", "msgId"]
+        const required = ["appVersion", "app", "appVariant", "msgId"]
         if (needsSession) required.push("session")
 
         for (let param of required) {
@@ -186,7 +186,7 @@ export class Smule {
             }
 
             if (response.request && response.request.path) {
-                _warn(`[${response.request.path}] Got ${response.status} - ${response.statusText}`)
+                _warn(`[${response.request.path}] Got ${response.status} - ${response.status == 418 ? "Unauthorized" : response.statusText}`)
                 _warn(response.data)
             } else {
                 _warn(`[NO REQUEST?] Got ${response.status} - ${response.statusText}`)
@@ -195,9 +195,10 @@ export class Smule {
             return false
         },
 
-        _createRequestMultiPart: async (url: string, pop: string, body: CustomFormData, checkSession: boolean = true) => {
+        _createRequestMultiPart: async (url: string,  body: CustomFormData, pop?: string, checkSession: boolean = true) => {
             let params = new URLSearchParams()
-            params.append("pop", pop)
+            if (pop)
+                params.append("pop", pop)
             if (checkSession && this.session && this.session.sessionToken && !this.session.expired) {
                 params.append("session", decodeURIComponent(this.session.sessionToken))
             }
@@ -269,7 +270,7 @@ export class Smule {
                 return
             }
 
-            let req = await this.internal._createRequest(SmuleUrls.PerfPreupload, new PreuploadRequest(arrKey, compType, ensembleType, uploadType, false, seedKey))
+            const req = await this.internal._createRequest(SmuleUrls.PerfPreupload, new PreuploadRequest(arrKey, compType, ensembleType, uploadType, false, seedKey))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PreuploadResult>(req)
         },
@@ -284,7 +285,7 @@ export class Smule {
                 return
             }
 
-            let req = await this.internal._createRequest(SmuleUrls.PerfCreate, perfReq)
+            const req = await this.internal._createRequest(SmuleUrls.PerfCreate, perfReq)
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PerformanceCreateResult>(req)
         },
@@ -299,7 +300,7 @@ export class Smule {
                 return
             }
 
-            let req = await this.internal._createRequest(SmuleUrls.PerfJoin, perfReq)
+            const req = await this.internal._createRequest(SmuleUrls.PerfJoin, perfReq)
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PerformanceCreateResult>(req)
         },
@@ -320,16 +321,16 @@ export class Smule {
             form.set("file2", file2, "application/octet-stream", "hi.." + (file3 ? ".jpg" : ".bin"))
             if (file3) form.set("file3", file3, "application/octet-stream", "hi..bin")
 
-            let req = await this.internal._createRequestMultiPart(SmuleUrls.getPerformanceUploadUrl(host), pop, form)
+            const req = await this.internal._createRequestMultiPart(SmuleUrls.getPerformanceUploadUrl(host), form, pop)
             this.internal._handleNon200(req)
         },
 
         _logreccomplete: async (arrKey: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.PerformanceLogRecCompletedArr, { arrKey })
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceLogRecCompletedArr, { arrKey })
             this.internal._handleNon200(req)
         },
         _storeStreamLog: async (arrKey: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.StoreStreamLog, {
+            const req = await this.internal._createRequest(SmuleUrls.StoreStreamLog, {
                 productId: arrKey,
                 productType: "ARR",
                 type: "own"
@@ -369,7 +370,7 @@ export class Smule {
              * @returns The user's data
              */
             byEmail: async (email: string) => {
-                let req = await this.internal._createRequest(SmuleUrls.UserLookup, { email }, false, false)
+                const req = await this.internal._createRequest(SmuleUrls.UserLookup, { email }, false, false)
                 if (!this.internal._handleNon200(req)) return
                 return this.internal._getResponseData<{ accountIcon: AccountIcon, apps: string[] }>(req)
             },
@@ -380,7 +381,7 @@ export class Smule {
              * @returns The accounts' details
              */
             byIds: async (accountIds: number[]) => {
-                let req = await this.internal._createRequest(SmuleUrls.AccountLookup, { accountIds })
+                const req = await this.internal._createRequest(SmuleUrls.AccountLookup, { accountIds })
                 if (!this.internal._handleNon200(req)) return
                 return this.internal._getResponseData<AccountLookupResult>(req)
             },
@@ -393,6 +394,12 @@ export class Smule {
             byId: async (accountId: number) => {
                 let data = await this.account.lookup.byIds([accountId])
                 return data.accountIcons[0]
+            },
+
+            byContacts: async (contacts: Array<Contact>) => {
+                const req = await this.internal._createRequest(SmuleUrls.ContactFind, { contacts, simCountryCode: "" })
+                if (!this.internal._handleNon200(req)) return
+                return this.internal._getResponseData<ContactFindResult>(req)
             }
         },
 
@@ -401,7 +408,7 @@ export class Smule {
          * @returns Whether or not the login was successful
          */
         loginAsGuest: async () => {
-            let req = await this.internal._createRequest(SmuleUrls.LoginGuest, new LoginAsGuestRequest(), false, false)
+            const req = await this.internal._createRequest(SmuleUrls.LoginGuest, new LoginAsGuestRequest(), false, false)
             if (!this.internal._handleNon200(req)) return false
 
             let res = this.internal._getResponseData<LoginAsGuestResult>(req)
@@ -422,7 +429,7 @@ export class Smule {
          * @returns Whether the log in was successful
          */
         login: async (email: string, password: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.UserLogin, new LoginRequest(email, password), false, false)
+            const req = await this.internal._createRequest(SmuleUrls.UserLogin, new LoginRequest(email, password, new LoginCommonData(this.session.device)), false, false)
             if (!this.internal._handleNon200(req)) return false
             let res = this.internal._getResponseData<LoginResult>(req)
             this.session.sessionToken = res.sessionToken
@@ -451,7 +458,7 @@ export class Smule {
                 this.session.expired = true // Must be expired in order to refresh
             }
 
-            let req = await this.internal._createRequest(SmuleUrls.LoginRefresh, { common: new LoginCommonData(this.session.device), refreshToken: this.session.refreshToken }, false, false)
+            const req = await this.internal._createRequest(SmuleUrls.LoginRefresh, { common: new LoginCommonData(this.session.device), refreshToken: this.session.refreshToken }, false, false)
             if (!this.internal._handleNon200(req)) return false
 
             let res = this.internal._getResponseData<{ loginResult: LoginResult }>(req)
@@ -477,7 +484,7 @@ export class Smule {
          * @returns Your profile
          */
         fetchSelf: async () => {
-            let req = await this.internal._createRequest(SmuleUrls.SingUserProfileMe, { includeActiveState: false })
+            const req = await this.internal._createRequest(SmuleUrls.SingUserProfileMe, { includeActiveState: false })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SingUserProfileResult>(req)
         },
@@ -488,9 +495,171 @@ export class Smule {
          * @returns The user's details
          */
         fetchOne: async (accountId: number) => {
-            let req = await this.internal._createRequest(SmuleUrls.SingUserProfile, new SingUserProfileRequest(accountId))
+            const req = await this.internal._createRequest(SmuleUrls.SingUserProfile, new SingUserProfileRequest(accountId))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SingUserProfileResult>(req)
+        },
+
+        /**
+         * Registers a new account on smule
+         * @param email Your email address
+         * @param password Your password
+         * @returns The server response
+         */
+        createWithEmail: async (email: string, password: string) => {
+            const req = await this.internal._createRequest(SmuleUrls.UserEmailRegister, {
+                ...new LoginCommonData(this.session.device),
+                ageParams: {
+                    enteredBirthMonth: null,
+                    enteredBirthYear: null,
+                    birthDateRequired: false
+                },
+                email,
+                password,
+                emailVerificationRequired: null,
+                preferredLang: "en",
+                tzOffset: new Date().getTimezoneOffset() * -60
+            }, false, false)
+
+            if (!this.internal._handleNon200(req)) {
+                if ("reason" in req.data) {
+                    throw new Error("Registration error: " + SmuleRegisterErrorCode[req.data.reason] || req.data.reason)
+                }
+            }
+
+            const data = this.internal._getResponseData<LoginResult>(req)
+            this.session.sessionToken = data.sessionToken
+            this.session.refreshToken = data.refreshToken
+            this.session.expired = false
+            this.session.isGuest = false
+
+            return data
+        },
+
+        /**
+         * Uploads a profile picture
+         * @param imageData The image data (jpeg)
+         * @returns The server response
+         */
+        uploadProfilePicture: async (imageData: Uint8Array) => {
+            const form = new CustomFormData()
+            form.set("picture", imageData, "image/jpeg", "profile.jpg")
+            const req = await this.internal._createRequestMultiPart(SmuleUrls.UserUploadPicture, form)
+            if (!this.internal._handleNon200(req)) return
+
+            return this.internal._getResponseData<UserUploadPictureResult>(req)
+        },
+        /**
+         * Deletes your profile picture
+         */
+        deleteProfilePicture: async () => {
+            const req = await this.internal._createRequest(SmuleUrls.UserPictureDelete, {})
+            if (!this.internal._handleNon200(req)) return
+        },
+        /**
+         * Uploads a cover picture
+         * @param imageData The image data
+         * @remarks Requires VIP
+         */
+        uploadCoverPicture: async (imageData: Uint8Array) => {
+            const form = new CustomFormData()
+            form.set("coverPhoto", imageData, "image/jpeg", "coverPhoto.jpg")
+            const req = await this.internal._createRequestMultiPart(SmuleUrls.SingCoverPhotoUpload, form)
+            if (!this.internal._handleNon200(req)) return
+        },
+        /**
+         * Deletes your cover picture
+         * @remarks Requires VIP
+         */
+        deleteCoverPicture: async () => {
+            const req = await this.internal._createRequest(SmuleUrls.SingCoverPhotoDelete, {})
+            if (!this.internal._handleNon200(req)) return
+        },
+
+        /**
+         * Changes your username
+         * @param username The new username
+         */
+        changeUsername: async (username: string) => {
+            const req = await this.internal._createRequest(SmuleUrls.UserUpdate, {
+                handle: username
+            })
+            this.internal._handleNon200(req)
+        },
+        /**
+         * Changes your email
+         * @param email The new email
+         */
+        changeEmail: async (email: string) => {
+            const req = await this.internal._createRequest(SmuleUrls.UserUpdate, {
+                email
+            })
+            this.internal._handleNon200(req)
+        },
+        /**
+         * Changes your bio
+         * @param text The new bio
+         */
+        changeBio: async (text: string) => {
+            const req = await this.internal._createRequest(SmuleUrls.UserBlurbUpdate, { blurb: text })
+            this.internal._handleNon200(req)
+        },
+        /**
+         * Customize your VIP profile
+         * @param colorTheme The background and foreground colors (RRGGBB hex), and whether the text should be white or black
+         * @param displayMentions Whether to display mentions
+         * @param displayName Your new display name
+         * @remarks Requires VIP
+         */
+        changeVIPProfileStuff: async (colorTheme: { background: number, foreground: number, lightText: boolean }, displayMentions: boolean, displayName: string) => {
+            const req = await this.internal._createRequest(SmuleUrls.SingProfileUpdate, { colorTheme, displayName, displayMentions })
+            this.internal._handleNon200(req)
+        },
+        /**
+         * Changes your full name
+         * @param firstName Your first name
+         * @param lastName Your last name
+         */
+        changeFullName: async (firstName: string, lastName: string) => {
+            const req = await this.internal._createRequest(SmuleUrls.UserPersonalUpdate, { firstName, lastName })
+            this.internal._handleNon200(req)
+        },
+        /**
+         * Changes your password
+         * @param newPassword The new password
+         */
+        changePassword: async (newPassword: string) => {
+            const req = await this.internal._createRequest(SmuleUrls.UserUpdate, { password: newPassword })
+            this.internal._handleNon200(req)
+        },
+
+        /**
+         * @returns Your preferences 
+         */
+        fetchPreferences: async () => {
+            const req = await this.internal._createRequest(SmuleUrls.Pref, { names: [
+                "TRACK_ACTIVENESS_DISABLE", // reverse "Show Chat Activity Status"
+                "PROFILE_PRIVACY_MODE", // reverse "Show My Online Status"
+                "STUDIO_TRACK_VIEW_DISABLE" // "Visible In Style Studio Editor"
+            ]})
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<PreferencesResult>(req)
+        },
+        /**
+         * Changes your preferences
+         * @param preferences The modified preferences
+         */
+        changePreferences: async (preferences: Array<{name: string, value: string}>) => {
+            const req = await this.internal._createRequest(SmuleUrls.PrefUpdate, { prefs: preferences })
+            this.internal._handleNon200(req)
+        },
+        /**
+         * Changes whether you wish to receive newsletter emails
+         * @param consent Whether to consent
+         */
+        changeNewsletterConsent: async (consent: boolean) => {
+            const req = await this.internal._createRequest(SmuleUrls.UserUpdate, { newsletter: consent ? 1 : 0 })
+            this.internal._handleNon200(req)
         }
     }
 
@@ -514,7 +683,7 @@ export class Smule {
              * @returns idk
              */
             create: async (address: string, type: "ACCT" | "GRP" = "ACCT") => {
-                let req = await this.internal._createRequest(SmuleUrls.SparkChatUpdate, { add: [{ name: address, type }], remove: [] })
+                const req = await this.internal._createRequest(SmuleUrls.SparkChatUpdate, { add: [{ name: address, type }], remove: [] })
                 if (!this.internal._handleNon200(req)) return
                 return this.internal._getResponseData<any>(req)
             },
@@ -673,7 +842,7 @@ export class Smule {
          * @returns The users you're following, and the one's you aren't
          */
         isFollowingUsers: async (accountIds: number[]) => {
-            let req = await this.internal._createRequest(SmuleUrls.SocialIsFollowing, new IsFollowingRequest(accountIds))
+            const req = await this.internal._createRequest(SmuleUrls.SocialIsFollowing, new IsFollowingRequest(accountIds))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SocialIsFollowingResult>(req)
         },
@@ -693,7 +862,7 @@ export class Smule {
          */
         followUsers: async (accountIds: number[]) => {
             // There is no return here
-            let req = await this.internal._createRequest(SmuleUrls.SocialFolloweeUpdate, new UpdateFollowingRequest(accountIds, []))
+            const req = await this.internal._createRequest(SmuleUrls.SocialFolloweeUpdate, new UpdateFollowingRequest(accountIds, []))
             this.internal._handleNon200(req)
         },
 
@@ -711,7 +880,7 @@ export class Smule {
          */
         unfollowUsers: async (accountIds: number[]) => {
             // There is no return here
-            let req = await this.internal._createRequest(SmuleUrls.SocialFolloweeUpdate, new UpdateFollowingRequest([], accountIds))
+            const req = await this.internal._createRequest(SmuleUrls.SocialFolloweeUpdate, new UpdateFollowingRequest([], accountIds))
             this.internal._handleNon200(req)
         },
 
@@ -731,7 +900,7 @@ export class Smule {
          * @remarks Followee = Following
          */
         fetchFollowings: async (accountId: number) => {
-            let req = await this.internal._createRequest(SmuleUrls.SocialFollowee, { accountId })
+            const req = await this.internal._createRequest(SmuleUrls.SocialFollowee, { accountId })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SocialFolloweesResult>(req)
         },
@@ -743,7 +912,7 @@ export class Smule {
          * @remarks Smule returns the ENTIRE list of followers, nonpaginated, so make sure you use it wisely
          */
         fetchFollowers: async (accountId: number) => {
-            let req = await this.internal._createRequest(SmuleUrls.SocialFollower, { accountId })
+            const req = await this.internal._createRequest(SmuleUrls.SocialFollower, { accountId })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SocialFollowersResult>(req)
         },
@@ -760,7 +929,7 @@ export class Smule {
                 _error("Offset must be positive")
                 return
             }
-            let req = await this.internal._createRequest(SmuleUrls.PerformanceGetComments, {
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceGetComments, {
                 limit,
                 offset,
                 performanceKey,
@@ -776,7 +945,7 @@ export class Smule {
          * @param commentKey The comment's key.
          */
         likeComment: async (performanceKey: string, commentKey: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.CommentLike, {
+            const req = await this.internal._createRequest(SmuleUrls.CommentLike, {
                 postKey: commentKey,
                 performanceKey
             })
@@ -789,7 +958,7 @@ export class Smule {
          * @param commentKey The comment's key.
          */
         unlikeComment: async (performanceKey: string, commentKey: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.CommentUnlike, {
+            const req = await this.internal._createRequest(SmuleUrls.CommentUnlike, {
                 postKey: commentKey,
                 performanceKey
             })
@@ -804,7 +973,7 @@ export class Smule {
          * @returns The likes on the specified comment.
          */
         fetchCommentLikes: async (performanceKey: string, commentKey: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.CommentLikes, {
+            const req = await this.internal._createRequest(SmuleUrls.CommentLikes, {
                 postKey: commentKey,
                 performanceKey
             })
@@ -821,7 +990,7 @@ export class Smule {
          * @returns The created comment's details.
          */
         createComment: async (performanceKey: string, comment: string, latitude = 37, longitude = -120) => {
-            let req = await this.internal._createRequest(SmuleUrls.PerformanceComment, {
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceComment, {
                 comment,
                 latitude,
                 longitude,
@@ -836,7 +1005,7 @@ export class Smule {
          * @param postKeys The keys of the comments to delete.
          */
         deleteComments: async (performanceKey: string, postKeys: string[]) => {
-            let req = await this.internal._createRequest(SmuleUrls.PerformanceDeleteComment, {
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceDeleteComment, {
                 postKeys,
                 performanceKey
             })
@@ -857,7 +1026,7 @@ export class Smule {
          * @param performanceKey The performance's key
          */
         likePerformance: async (performanceKey: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.PerformanceLove, {
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceLove, {
                 performanceKey,
                 latitude: this.session.latitude,
                 longitude: this.session.longitude
@@ -870,7 +1039,7 @@ export class Smule {
          * @returns The blocked users.
          */
         fetchBlocked: async () => {
-            let req = await this.internal._createRequest(SmuleUrls.SocialBlockList, {})
+            const req = await this.internal._createRequest(SmuleUrls.SocialBlockList, {})
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SocialBlockListResult>(req) || { accountIds: [] } // api might return null
         },
@@ -880,7 +1049,7 @@ export class Smule {
          * @param accountIds The ids of the accounts to block.
          */
         blockUsers: async (accountIds: number[]) => {
-            let req = await this.internal._createRequest(SmuleUrls.SocialBlockUpdate, { add: accountIds, remove: [] })
+            const req = await this.internal._createRequest(SmuleUrls.SocialBlockUpdate, { add: accountIds, remove: [] })
             this.internal._handleNon200(req)
         },
 
@@ -897,7 +1066,7 @@ export class Smule {
          * @param accountIds The ids of the accounts to unblock.
          */
         unblockUsers: async (accountIds: number[]) => {
-            let req = await this.internal._createRequest(SmuleUrls.SocialBlockUpdate, { add: [], remove: accountIds })
+            const req = await this.internal._createRequest(SmuleUrls.SocialBlockUpdate, { add: [], remove: accountIds })
             this.internal._handleNon200(req)
         },
 
@@ -918,7 +1087,7 @@ export class Smule {
          * @returns An object containing the profile views of the current user.
          */
         fetchProfileViews: async (period: "WEEK" | "MONTH" | "QUARTER" = "WEEK", cursor = "start", limit = 10) => {
-            let req = await this.internal._createRequest(SmuleUrls.AccountProfileStatsViews, { period, cursor, limit })
+            const req = await this.internal._createRequest(SmuleUrls.AccountProfileStatsViews, { period, cursor, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<AccountProfileStatsViewsResult>(req)
         },
@@ -930,7 +1099,7 @@ export class Smule {
          * @returns Some invites.
          */
         fetchPersonalInvites: async (cursor = "start", limit = 20) => {
-            let req = await this.internal._createRequest(SmuleUrls.InviteMe, { cursor, limit })
+            const req = await this.internal._createRequest(SmuleUrls.InviteMe, { cursor, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<InviteMeResult>(req)
         },
@@ -942,7 +1111,7 @@ export class Smule {
          * @returns Some invites.
          */
         fetchInvites: async (cursor = "start", limit = 20) => {
-            let req = await this.internal._createRequest(SmuleUrls.InviteList, { cursor, limit })
+            const req = await this.internal._createRequest(SmuleUrls.InviteList, { cursor, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<InviteListResult>(req)
         },
@@ -959,7 +1128,7 @@ export class Smule {
          * @returns The "song book"
          */
         fetchSongbook: async (cursor = "start", limit = 10) => {
-            let req = await this.internal._createRequest(this.session.isGuest ? SmuleUrls.SongbookGuest : SmuleUrls.Songbook, new SongbookRequest(cursor, limit))
+            const req = await this.internal._createRequest(this.session.isGuest ? SmuleUrls.SongbookGuest : SmuleUrls.Songbook, new SongbookRequest(cursor, limit))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SongbookResult>(req)
         },
@@ -969,7 +1138,7 @@ export class Smule {
          * @returns The updated songbook.
          */
         updateSongbook: async (categoryIds: number[]) => {
-            let req = await this.internal._createRequest(SmuleUrls.SongbookUpdate, { categoryIds })
+            const req = await this.internal._createRequest(SmuleUrls.SongbookUpdate, { categoryIds })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<any>(req)
         },
@@ -982,7 +1151,7 @@ export class Smule {
          * @returns The songs
          */
         fetchFromCategory: async (cursor = "start", categoryId = 9998, limit = 10, duetAccountId?: number) => {
-            let req = await this.internal._createRequest(SmuleUrls.Category, new CategoryRequest(cursor, limit, categoryId))
+            const req = await this.internal._createRequest(SmuleUrls.Category, new CategoryRequest(cursor, limit, categoryId))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<CategorySongsResult>(req)
         },
@@ -992,7 +1161,7 @@ export class Smule {
          * @returns The list of categories sorted by the specified type.
          */
         fetchCategoryList: async (sortType: "POPULAR" | "ALPHA" = "POPULAR") => {
-            let req = await this.internal._createRequest(SmuleUrls.CategoryList, { sort: sortType })
+            const req = await this.internal._createRequest(SmuleUrls.CategoryList, { sort: sortType })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<CategoryListResult>(req)
         },
@@ -1004,7 +1173,7 @@ export class Smule {
          * @returns The details of the song
          */
         fetchOne: async (key: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.Arr, { arrKey: key })
+            const req = await this.internal._createRequest(SmuleUrls.Arr, { arrKey: key })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<ArrResult>(req)
         },
@@ -1012,7 +1181,7 @@ export class Smule {
         //TODO: raven is also sth ive seen in those official songs too
         //TODO: maybe they have another specialised id?
         fetchOneFromRaven: async (ravenSongId: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.ArrFromRSong, { rsongId: ravenSongId })
+            const req = await this.internal._createRequest(SmuleUrls.ArrFromRSong, { rsongId: ravenSongId })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<ArrResult>(req)
         },
@@ -1023,16 +1192,30 @@ export class Smule {
          * @returns The details of the songs.
          */
         fetch: async (keys: string[]) => {
-            let req = await this.internal._createRequest(SmuleUrls.ArrByKeys, { arrKeys: keys })
+            const req = await this.internal._createRequest(SmuleUrls.ArrByKeys, { arrKeys: keys })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<ArrByKeysResult>(req)
         },
 
         // TODO: test and doc
         fetchOwnedBy: async (ownerId: number, offset = 0, limit = 10) => {
-            let req = await this.internal._createRequest(SmuleUrls.ArrOwned, { ownerAccountId: ownerId, offset, limit })
+            const req = await this.internal._createRequest(SmuleUrls.ArrOwned, { ownerAccountId: ownerId, offset, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<any>(req)
+        },
+
+        /**
+         * Fetches free songs from a list of genres
+         * 
+         * This endpoint is usually used at register, to recommend
+         * some songs to the new user.
+         * @param genreIds The ids of the genres
+         * @returns A stupid nested list with free "compositions"
+         */
+        fetchFromGenres: async (genreIds: number[]) => {
+            const req = await this.internal._createRequest(SmuleUrls.TopicChoose, { compositionChoices: true, topicIds: genreIds })
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<TopicOptionResult>(req)
         },
 
         /**
@@ -1076,22 +1259,18 @@ export class Smule {
         /**
          * Bookmarks a song.
          * @param key The song / arr key.
-         * @returns idk
          */
         bookmark: async (key: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.ArrBookmark, { arrKey: key })
-            if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<any>(req) // TODO:
+            const req = await this.internal._createRequest(SmuleUrls.ArrBookmark, { arrKey: key })
+            this.internal._handleNon200(req)
         },
         /**
          * Unbookmarks a song.
          * @param key The song / arr key.
-         * @returns idk
          */
         unbookmark: async (key: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.ArrBookmarkRemove, { arrKey: key })
-            if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<any>(req)
+            const req = await this.internal._createRequest(SmuleUrls.ArrBookmarkRemove, { arrKey: key })
+            this.internal._handleNon200(req)
         },
 
         /**
@@ -1101,28 +1280,28 @@ export class Smule {
          * @returns idk prolly bookmarks
          */
         fetchBookmarks: async (cursor = "start", limit = 10) => {
-            let req = await this.internal._createRequest(SmuleUrls.ArrBookmarkList, { cursor, limit })
+            const req = await this.internal._createRequest(SmuleUrls.ArrBookmarkList, { cursor, limit })
             if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<any>(req)
+            return this.internal._getResponseData<ArrBookmarkListResult>(req)
         },
 
         //TODO:
         update: async (key: string, artist?: string, name?: string, tags?: string[]) => {
-            let req = await this.internal._createRequest(SmuleUrls.ArrUpdate, { arrKey: key, artist, name, tags })
+            const req = await this.internal._createRequest(SmuleUrls.ArrUpdate, { arrKey: key, artist, name, tags })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<any>(req)
         },
 
         //TODO:
         vote: async (key: string, arrVersion: number, reason: string, vote: "UP" | "DOWN") => {
-            let req = await this.internal._createRequest(SmuleUrls.ArrVote, { arrKey: key, ver: arrVersion, reason, vote })
+            const req = await this.internal._createRequest(SmuleUrls.ArrVote, { arrKey: key, ver: arrVersion, reason, vote })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<any>(req)
         },
 
         //TODO:
         delete: async (key: string, deletePerformances = true) => {
-            let req = await this.internal._createRequest(SmuleUrls.ArrDelete, { arrKey: key, deletePerfs: deletePerformances })
+            const req = await this.internal._createRequest(SmuleUrls.ArrDelete, { arrKey: key, deletePerfs: deletePerformances })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<any>(req)
         },
@@ -1142,7 +1321,7 @@ export class Smule {
              * @returns The performances' details
              */
             byKeys: async (performanceKeys: string[]) => {
-                let req = await this.internal._createRequest(SmuleUrls.PerformanceByKeys, { performanceKeys })
+                const req = await this.internal._createRequest(SmuleUrls.PerformanceByKeys, { performanceKeys })
                 if (!this.internal._handleNon200(req)) return
                 return this.internal._getResponseData<PerformanceByKeysResult>(req)
             },
@@ -1165,7 +1344,7 @@ export class Smule {
              * @returns The performances
              */
             byUser: async (accountId: number, fillStatus: PerformancesFillStatus = "FILLED", sortMethod: PerformanceSortMethod = "NEWEST_FIRST", limit: number = 20, offset: number = 0) => {
-                let req = await this.internal._createRequest(SmuleUrls.PerformanceParts, new PerformancePartsRequest(accountId, fillStatus, sortMethod, limit, offset))
+                const req = await this.internal._createRequest(SmuleUrls.PerformanceParts, new PerformancePartsRequest(accountId, fillStatus, sortMethod, limit, offset))
                 if (!this.internal._handleNon200(req)) return
                 return this.internal._getResponseData<PerformancesByUserResult>(req)
             },
@@ -1180,9 +1359,24 @@ export class Smule {
              * @returns The performances associated with the given AV template.
              */
             byAvTemplate: async (templateId: number, cursor = "start", limit = 10, performanceKey?: string) => {
-                let req = await this.internal._createRequest(SmuleUrls.DiscoveryPerfByAvTemplateList, { avTemplateId: templateId, cursor, limit, performanceKey })
+                const req = await this.internal._createRequest(SmuleUrls.DiscoveryPerfByAvTemplateList, { avTemplateId: templateId, cursor, limit, performanceKey })
                 if (!this.internal._handleNon200(req)) return
                 return this.internal._getResponseData<PerformancesByAvTemplateResult>(req)
+            },
+
+            /**
+             * Fetches performances based on the specified genre.
+             * @param genreId The id of the genre
+             * @param offset The starting point
+             * @param limit The maximum number of performances
+             * @param fillStatus Type of performances
+             * @param sort The order
+             * @returns The performances
+             */
+            byGenre: async (genreId: number, offset = 0, limit = 10, fillStatus: PerformancesFillStatus = "FILLED", sort: PerformancesSortOrder = "SUGGESTED") => {
+                const req = await this.internal._createRequest(SmuleUrls.PerformanceList, { fillStatus, limit, offset, sort, topicId: genreId }) // TODO: check if we can modify PerformancesListRequest to use genreId too, instead of writing it inline
+                if (!this.internal._handleNon200(req)) return
+                return this.internal._getResponseData<PerformanceList>(req)
             }
         },
 
@@ -1225,7 +1419,7 @@ export class Smule {
          * @returns The performance lists.
          */
         fetchLists: async (requests: PerformanceReq[]) => {
-            let req = await this.internal._createRequest(SmuleUrls.PerformanceLists, { perfRequests: requests })
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceLists, { perfRequests: requests })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<{ perfLists: PerformanceList[] }>(req)
         },
@@ -1236,7 +1430,7 @@ export class Smule {
          * @returns The performance's details
          */
         fetchOne: async (performanceKey: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.PerformanceUrl, { performanceKey })
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceUrl, { performanceKey })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PerformanceResult>(req)
         },
@@ -1251,11 +1445,15 @@ export class Smule {
          * @returns The performances of the user
          */
         fetchFromAccount: async (accountId: number, fillStatus: PerformancesFillStatus = "FILLED", sortMethod: PerformanceSortMethod = "NEWEST_FIRST", limit: number = 20, offset: number = 0) => {
-            let req = await this.internal._createRequest(SmuleUrls.PerformanceParts, new PerformancePartsRequest(accountId, fillStatus, sortMethod, limit, offset))
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceParts, new PerformancePartsRequest(accountId, fillStatus, sortMethod, limit, offset))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PerformancePartsResult>(req)
         },
-
+        fetchBookmarkedInvites: async (offset = 0, limit = 10) => {
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceBookmarkSeed, { offset, limit, forApps: ["sing_google"] })
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<PerformanceBookmarkSeedResult>(req)
+        },
         /**
          * Fetches the children performances of a specific performance.
          * @param performanceKey The performance's key.
@@ -1264,7 +1462,7 @@ export class Smule {
          * @returns The children performances of the given performance.
          */
         fetchChildren: async (performanceKey: string, limit = 25, offset = 0) => {
-            let req = await this.internal._createRequest(SmuleUrls.PerformanceChildren, { performanceKey, limit, offset })
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceChildren, { performanceKey, limit, offset })
             if (!this.internal._handleNon200(req)) {
                 return {
                     performanceIcons: [],
@@ -1279,7 +1477,7 @@ export class Smule {
          * @returns The details of the performances.
          */
         fetchDetails: async (performanceKeys: string[]) => {
-            let req = await this.internal._createRequest(SmuleUrls.PerformanceListDetails, { keys: performanceKeys, returnAvTemplateDetails: true, returnBookmarked: true, returnLoved: true, returnRestricted: true, returnTopComment: true })
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceListDetails, { keys: performanceKeys, returnAvTemplateDetails: true, returnBookmarked: true, returnLoved: true, returnRestricted: true, returnTopComment: true })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PerformanceDetailsResult>(req)
         },
@@ -1431,7 +1629,16 @@ export class Smule {
          * @param performanceKey The key of the performance to be deleted.
          */
         deleteOne: async (performanceKey: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.PerformanceDelete, { performanceKey })
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceDelete, { performanceKey })
+            this.internal._handleNon200(req)
+        },
+
+        bookmarkInvites: async (performanceKeys: string[]) => {
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceBookmarkSeedUpdate, { add: performanceKeys, remove: [] })
+            this.internal._handleNon200(req)
+        },
+        unbookmarkInvites: async (performanceKeys: string[]) => {
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceBookmarkSeedUpdate, { add: [], remove: performanceKeys })
             this.internal._handleNon200(req)
         }
     }
@@ -1445,7 +1652,7 @@ export class Smule {
          * @returns The trending searches currently available
          */
         fetchTrending: async () => {
-            let req = await this.internal._createRequest(SmuleUrls.RecTsrch, {})
+            const req = await this.internal._createRequest(SmuleUrls.RecTsrch, {})
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<RecTrendingSearchResult>(req)
         },
@@ -1456,7 +1663,7 @@ export class Smule {
          * @returns The search result
          */
         perform: async (query: string) => {
-            let req = await this.internal._createRequest(SmuleUrls.SearchGlobal, { includeRecording: 0, term: query })
+            const req = await this.internal._createRequest(SmuleUrls.SearchGlobal, { includeRecording: 0, term: query })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SearchResult>(req)
         },
@@ -1471,7 +1678,7 @@ export class Smule {
          * @returns The search results matching the specified criteria.
          */
         performSpecific: async (query: string, type: SearchResultType, sort: SearchResultSort = "POPULAR", cursor = "start", limit = 25) => {
-            let req = await this.internal._createRequest(SmuleUrls.Search, new SearchRequest(cursor, limit, type, sort, query))
+            const req = await this.internal._createRequest(SmuleUrls.Search, new SearchRequest(cursor, limit, type, sort, query))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SearchResult>(req)
         },
@@ -1483,7 +1690,7 @@ export class Smule {
          * @returns The autocomplete suggestions
          */
         fetchAutocomplete: async (query: string, limit = 5) => {
-            let req = await this.internal._createRequest(SmuleUrls.SearchAutocomplete, new SearchAutocompleteRequest(query, limit))
+            const req = await this.internal._createRequest(SmuleUrls.SearchAutocomplete, new SearchAutocompleteRequest(query, limit))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SearchAutocompleteResult>(req)
         }
@@ -1500,7 +1707,7 @@ export class Smule {
          * @returns The fetched AV templates.
          */
         fetch: async (limit = 25) => {
-            let req = await this.internal._createRequest(SmuleUrls.AvtemplateCategoryList, new AvTemplateCategoryListRequest("AUDIO", "start", limit, "STANDARD"))
+            const req = await this.internal._createRequest(SmuleUrls.AvtemplateCategoryList, new AvTemplateCategoryListRequest("AUDIO", "start", limit, "STANDARD"))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<AvTemplateCategoryListResult>(req)
         }
@@ -1517,7 +1724,7 @@ export class Smule {
          */
         markSongAsPlayed: async (arrKey: string) => {
             // _log("Marking song as played...")
-            let req = await this.internal._createRequest(SmuleUrls.ArrPlay, { arrKey })
+            const req = await this.internal._createRequest(SmuleUrls.ArrPlay, { arrKey })
             this.internal._handleNon200(req)
         },
 
@@ -1528,7 +1735,7 @@ export class Smule {
          */
         markPerformanceAsPlayed: async (performanceKey: string) => {
             // _log("Marking performance as played...")
-            let req = await this.internal._createRequest(SmuleUrls.PerformancePlay, { performanceKey })
+            const req = await this.internal._createRequest(SmuleUrls.PerformancePlay, { performanceKey })
             this.internal._handleNon200(req)
         },
 
@@ -1539,7 +1746,7 @@ export class Smule {
          */
         markPerformanceListenStart: async (performanceKey: string) => {
             // _log("Marking performance as listened to...")
-            let req = await this.internal._createRequest(SmuleUrls.PerformanceListenStart, { performanceKey })
+            const req = await this.internal._createRequest(SmuleUrls.PerformanceListenStart, { performanceKey })
             this.internal._handleNon200(req)
         }
     }
@@ -1553,7 +1760,7 @@ export class Smule {
          * @returns The playlists that match the specified criteria.
          */
         fetchPlaylists: async () => {
-            let req = await this.internal._createRequest(SmuleUrls.PlaylistExplore, {})
+            const req = await this.internal._createRequest(SmuleUrls.PlaylistExplore, {})
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PlaylistExploreResult>(req)
         },
@@ -1566,7 +1773,7 @@ export class Smule {
          * @returns The playlist with the specified details.
          */
         fetchPlaylist: async (playlistId: number, offset = 0, limit = 10) => {
-            let req = await this.internal._createRequest(SmuleUrls.PlaylistGet, { playlistId, offset, limit })
+            const req = await this.internal._createRequest(SmuleUrls.PlaylistGet, { playlistId, offset, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<PlaylistGetResult>(req)
         },
@@ -1578,7 +1785,14 @@ export class Smule {
          * @returns The users that match the specified criteria.
          */
         fetchAccounts: async (cursor = "start", limit = 20) => {
-            let req = await this.internal._createRequest(SmuleUrls.AccountExplore, { cursor, limit })
+            const req = await this.internal._createRequest(SmuleUrls.AccountExplore, { cursor, limit })
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<AccountExploreResult>(req)
+        },
+        // TODO: find out if this is the same as #fetchAccounts
+        // TODO: this one is used in the find friends tab, but it might be the same exact thing
+        fetchRecommendedAccounts: async (cursor = "start", limit = 20) => {
+            const req = await this.internal._createRequest(SmuleUrls.RecAcct, { cursor, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<AccountExploreResult>(req)
         },
@@ -1591,7 +1805,7 @@ export class Smule {
          * @returns The groups matching the specified criteria.
          */
         fetchGroups: async (cursor = "start", limit = 10, sortBy = "RECOMMENDED") => {
-            let req = await this.internal._createRequest(SmuleUrls.SfamList, { cursor, limit, sortBy })
+            const req = await this.internal._createRequest(SmuleUrls.SfamList, { cursor, limit, sortBy })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SFamListResult>(req)
         },
@@ -1606,7 +1820,7 @@ export class Smule {
          */
         fetchLivestreams: async (cursor = "start", limit = 20, sort = "POPULAR") => {
             let self = await this.account.fetchSelf()
-            let req = await this.internal._createRequest(SmuleUrls.CfireList, { accountId: self.profile.accountIcon.accountId, cursor, limit, sort })
+            const req = await this.internal._createRequest(SmuleUrls.CfireList, { accountId: self.profile.accountIcon.accountId, cursor, limit, sort })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<CampfireListResult>(req)
         },
@@ -1619,16 +1833,38 @@ export class Smule {
          * @remarks You must be logged in in order to fetch your feed.
          */
         fetchFeed: async (cursor = "start", limit = 20) => {
-            let req = await this.internal._createRequest(SmuleUrls.SocialFeedList, { cursor, limit })
+            const req = await this.internal._createRequest(SmuleUrls.SocialFeedList, { cursor, limit })
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SocialFeedListResult>(req)
         },
+
+        /**
+         * Fetches a list of genres
+         * @param cursor The offset to start from
+         * @param limit The number of genres to fetch
+         * @returns A list of genres
+         */
+        fetchGenres: async (cursor = 0, limit = 10) => {
+            const req = await this.internal._createRequest(SmuleUrls.TopicOption, { limit, offset: cursor, singleCoverUrl: false })
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<TopicOptionResult>(req)
+        },
+
+        /**
+         * Fetches your selected genres
+         * @returns A list of genres
+         */
+        fetchYourGenres: async () => {
+            const req = await this.internal._createRequest(SmuleUrls.Topic, {})
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<TopicOptionResult>(req)
+        }
     }
 
     // utterly useless but it's here if needed
     public settings = {
         fetch: async () => {
-            let req = await this.internal._createRequest(SmuleUrls.Settings, new SettingsRequest(this.session.device))
+            const req = await this.internal._createRequest(SmuleUrls.Settings, new SettingsRequest(this.session.device))
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<SettingsResult>(req)
         }
@@ -1746,9 +1982,142 @@ export class Smule {
             },
         },
         fetch: async (campfireId: number) => {
-            let req = await this.internal._createRequest(SmuleUrls.CfireSync, {campfireId})
+            const req = await this.internal._createRequest(SmuleUrls.CfireSync, {campfireId})
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<CampfireSyncResult>(req)
+        }
+    }
+
+    public groups = {
+        /**
+         * Fetches a group's details
+         * @param groupId The ID of the group
+         * @returns The group
+         */
+        fetchOne: async (groupId: number) => {
+            const req = await this.internal._createRequest(SmuleUrls.SfamInfo, {sfamId: groupId})
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<SFamInfoResult>(req)
+        },
+
+        /**
+         * Fetches a group's posts
+         * @param groupId The ID of the group
+         * @param cursor The starting point
+         * @param limit How many to fetch
+         * @returns The posts
+         */
+        fetchPosts: async (groupId: number, cursor = "start", limit = 10) => {
+            const req = await this.internal._createRequest(SmuleUrls.SfamPostFeed, {sfamId: groupId, cursor, limit})
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<SocialFeedListResult>(req)
+        },
+
+        /**
+         * Fetches a group's members
+         * @param groupId The ID of the group
+         * @param cursor Starting point
+         * @param limit How many
+         * @param roles Member roles (0 - owner, 1 - admin, 2 - member)
+         * @returns The members
+         */
+        fetchMembers: async (groupId: number, cursor = "start", limit = 10, roles = [2]) => {
+            const req = await this.internal._createRequest(SmuleUrls.SfamMemberList, {sfamId: groupId, cursor, limit, roles, memberGroup: 0, vipStatus: "ALL"})
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<SFamMemberListResult>(req)
+        },
+
+        /**
+         * Sends a request to join a group
+         * @param groupId The ID of the group
+         * @returns The membership status
+         */
+        join: async (groupId: number) => {
+            const req = await this.internal._createRequest(SmuleUrls.SfamMembershipRequestSend, {sfamId: groupId})
+            if (!this.internal._handleNon200(req)) return
+            return SmuleUtil.getGroupMembershipType(this.internal._getResponseData<{mbrshipStatus: number}>(req).mbrshipStatus)
+        },
+
+        /**
+         * Uploads a cover picture for a group
+         * @param imageData The image data
+         * @returns The resource ID of the uploaded image, to be used in `create`
+         */
+        uploadCoverPicture: async (imageData: Uint8Array) => {
+            const form = new CustomFormData()
+            form.set("coverPhoto", imageData, "image/jpeg", "family_cover_photo.jpg")
+            const req = await this.internal._createRequestMultiPart(SmuleUrls.SfamCoverPhotoUpload, form)
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<{resource_id}>(req).resource_id
+        },
+
+        /**
+         * Creates a group
+         * @param name The name of the group
+         * @param desc The description of the group
+         * @param lang The language
+         * @param loc The location (XX - global)
+         * @param picId The resource id of the cover picture
+         * @param sfamTag The global group tag
+         * @returns The group
+         */
+        create: async (name: string, desc: string, lang: string, loc: string, picId: number, sfamTag: string) => {
+            const req = await this.internal._createRequest(SmuleUrls.SfamCreate, {name, desc, lang, loc, picId, sfamTag})
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<{sfam: SFam}>(req).sfam
+        },
+
+        /**
+         * Posts multiple performances to a group's feed
+         * @param performanceKeys The performances to post
+         * @param groupId The ID of the group
+         */
+        postPerformances: async (performanceKeys: string[], groupId: number) => {
+            const req = await this.internal._createRequest(SmuleUrls.SfamPostAdd, {objects: performanceKeys, sfamId: groupId})
+            this.internal._handleNon200(req)
+            // returns the same ids as the input, so no reason why to return them back
+        },
+
+        /**
+         * Removes a post from a group
+         * @param groupId The ID of the group
+         * @param postId The ID of the post
+         * @param postType The type of the post
+         */
+        removePost: async (groupId: number, postId: number, postType: "FEED" = "FEED") => {
+            const req = await this.internal._createRequest(SmuleUrls.SfamPostRemove, {sfamId: groupId, postId, postType})
+            this.internal._handleNon200(req)
+        }
+    }
+
+    public playlists = {
+        create: async (name: string, visibility: PlaylistVisibility = "PUB") => {
+            const req = await this.internal._createRequest(SmuleUrls.AplistCreate, {name, visibility})
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<{playlistIcon: PlaylistIcon}>(req).playlistIcon
+        },
+        addPerformance: async (playlistKey: string, performanceKey: string) => {
+            const req = await this.internal._createRequest(SmuleUrls.AplistPerfAdd, {playlistKey, perfKey: performanceKey})
+            this.internal._handleNon200(req)
+        },
+        changeVisibility: async (playlistKey: string, visibility: PlaylistVisibility) => {
+            const req = await this.internal._createRequest(SmuleUrls.AplistUpdate, {playlistKey, visibility})
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<{playlistIcon: PlaylistIcon}>(req).playlistIcon
+        },
+        changeName: async (playlistKey: string, name: string) => {
+            const req = await this.internal._createRequest(SmuleUrls.AplistUpdate, {playlistKey, name})
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<{playlistIcon: PlaylistIcon}>(req).playlistIcon
+        },
+        fetchOne: async (playlistKey: string, sortMethod: PlaylistSortMethod, cursor: string = "start", limit: number = 10) => {
+            const req = await this.internal._createRequest(SmuleUrls.AplistView, {playlistKey, playlistSortMethod: sortMethod, cursor, limit})
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<PlaylistViewResult>(req)
+        },
+        deleteOne: async (playlistKey: string) => {
+            const req = await this.internal._createRequest(SmuleUrls.AplistDelete, {playlistKey})
+            this.internal._handleNon200(req)
         }
     }
 

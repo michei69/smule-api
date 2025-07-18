@@ -432,6 +432,7 @@ export namespace SmuleUrls {
     export const SfamMembershipInvitationReject = baseUrl + '/sfam/mbrship/invtn/reject'; //! login
     export const SfamMembershipInvitationSend = baseUrl + '/sfam/mbrship/invtn/send'; //! login
     export const SfamMembershipRequestRoles = baseUrl + '/sfam/mbrship/rqst/roles'; //! login
+    export const SfamMembershipRequestSend = baseUrl + '/sfam/mbrship/rqst/send'; //! login
     export const SfamPostAdd = baseUrl + '/sfam/post/add'; //! login
     export const SfamPostFeed = baseUrl + '/sfam/post/feed'; //! login
     export const SfamPostRemove = baseUrl + '/sfam/post/remove'; //! login
@@ -492,6 +493,7 @@ export namespace SmuleUrls {
     export const UserLogin = baseUrl + '/user/login'; // no session
     export const UserLookup = baseUrl + '/user/lookup'; // no session
     export const UserPasswordReset = baseUrl + '/user/password/reset'; //! login
+    export const UserPersonalUpdate = baseUrl + '/user/personal/update'; //! login
     export const UserProfileUpdate = baseUrl + '/user/personal/update'; //! login
     export const UserPhoneConnect = baseUrl + '/user/phone/connect'; //! login
     export const UserPictureDelete = baseUrl + '/user/picture/delete'; //! login
@@ -730,6 +732,7 @@ export namespace SmuleUrls {
         UserEmailUpdateConfirm,
         UserEmailUpdateResend,
         UserPasswordReset,
+        UserPersonalUpdate,
         UserProfileUpdate,
         UserPhoneConnect,
         UserPictureDelete,

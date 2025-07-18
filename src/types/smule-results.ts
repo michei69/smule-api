@@ -2,7 +2,7 @@
 // TODO: also add new results, cause we need to cover all urls
 
 import type { sing_google_subscriptions, sing_google_stream_values, sing_google_buy_msg, sing_google_tutorial, sing_google_cccp, sing_google_songbook, sing_google_preSing, sing_google_ftuxBlocking, sing_google_songUpsell, sing_google_explore, sing_google_mediaPlayer, sing_google_ads, sing_google_smeaks, sing_profile, sing_playlists, sing_audio, sing_audioFilters, sing_arr, sing_onboarding, sing_cccp, sing_acappella, sing_video, sing_videoEncoding, sing_chat, sing_search, sing_videoFX, sing_videoStyles, sing_avqSurvey, sing_paywall, sing_freeform, dfp, sing_appLaunch, sing_crm, sing_boost, sing_share, sing_feed, sing_findFriendsModule, sing_localization, sing_seeds, sing_nowPlaying, sing_registration, sing_upload, sing_families, sing_appSettings, campfire_avStreamQuality, campfire_config, sing_virtualCurrency, campfire_audioFilters, links, sing_singingFlow, sing_explore, sing_songbookUsability, sing_templates, sing_topics, sing_banners, sing_shortJoins, sing_vcs, sing_notifications, sing_tipping, appFamily } from "./smule-settings-types";
-import type { AccountIcon, SMULE_APP, SongCategory, Song, Cursor, Banner, PerformanceIcon, ParticipationIcon, Profile, SingProfile, Wallet, GiftIcon, Arr, TrendingSearch, SearchResultType, SearchResultCategory, AvTemplateLite, Comment, PlaylistDetailed, Playlist, RecPerformanceIcon, SFamList, Campfire, FeedItem, SocialInvite, SocialInvite2, UserTippingPref, RecAccount, ArrExtended, PerformanceDetail } from "./smule-types";
+import type { AccountIcon, SMULE_APP, SongCategory, Song, Cursor, Banner, PerformanceIcon, ParticipationIcon, Profile, SingProfile, Wallet, GiftIcon, Arr, TrendingSearch, SearchResultType, SearchResultCategory, AvTemplateLite, Comment, PlaylistDetailed, Playlist, RecPerformanceIcon, SFamList, Campfire, FeedItem, SocialInvite, SocialInvite2, UserTippingPref, RecAccount, ArrExtended, PerformanceDetail, SFam, PlaylistSortMethod } from "./smule-types";
 
 /**
  * Base API response
@@ -50,6 +50,11 @@ export type ArrResult = {
 export type ArrByKeysResult = {
     arrVersionLites: Arr[]
 }
+export type ArrBookmarkListResult = {
+    songs: Arr,
+    cursor: Cursor,
+    totalCount: number
+}
 
 export type AvTemplateCategoryListResult = {
     recAvTemplateLites: Array<{
@@ -74,6 +79,13 @@ export type CategoryListResult = {
 export type CategorySongsResult = {
     songs: Array<Song>,
     cursor: Cursor
+}
+export type ContactFindResult = {
+    notFollowing: Array<{
+        realName: string,
+        accountIcon: AccountIcon
+    }>,
+    hasMatches: boolean // whether it found any of them
 }
 
 export type DeviceSettingsResult = {
@@ -146,7 +158,7 @@ export type LoginResult = {
      * this is usually empty
      */
     settings: string;
-    birthDate: {
+    birthDate?: {
         year: number;
         month: number;
     };
@@ -181,6 +193,11 @@ export type PerformancePartsResult = {
         performanceCount: number,
     },
     storageLimit: number,
+    next: number
+}
+export type PerformanceBookmarkSeedResult = {
+    performanceIcons: Array<PerformanceIcon>,
+    totalPerformances: number,
     next: number
 }
 export type PerformanceCreateResult = {
@@ -228,9 +245,15 @@ export type PlaylistGetResult = {
     recPerformanceIcons: RecPerformanceIcon[],
     next: number
 }
+export type PlaylistViewResult = {
+    items: Array<{
+        performanceIcon: PerformanceIcon,
+    }>,
+    cursor: Cursor,
+    playlistSortMethod: PlaylistSortMethod
+}
 
-
-export type PreferancesResult = {
+export type PreferencesResult = {
     prefs: Array<{
         name: string,
         value: string // boolean as string
@@ -341,8 +364,26 @@ export type SettingsResult = {
     "appFamily": appFamily,
 }
 
+export type SFamInfoResult = {
+    sfamInfo: {
+        sfam: SFam,
+        membership: "GUEST"|"MEMBER", // TODO
+        sfamStat: {
+            postCount: number,
+            memberCount: number
+        },
+        owner: AccountIcon,
+        adminIcons: AccountIcon[],
+        webUrl: string
+    }
+}
+
 export type SFamListResult = {
     sfamList: SFamList[],
+    cursor: Cursor
+}
+export type SFamMemberListResult = {
+    members: Array<AccountIcon>,
     cursor: Cursor
 }
 
@@ -399,6 +440,29 @@ export type StoreSubscriptionStatusResult = {
     status: string,
     skipTrial: boolean,
     storeCancellable: boolean
+}
+
+export type TopicOptionResult = {
+    options: Array<{
+        id: number,
+        recId: string,
+        displayName: string,
+        coverUrls: string[]
+    }>
+}
+export type TopicChooseResult = {
+    freeCompositions: Array<{
+        recId: string,
+        compositionLite: { // should we have a separate type for this?
+            type: "ARR",
+            arrangementVersionLite: Arr
+        }
+    }>
+}
+
+export type UserUploadPictureResult = {
+    picUrl: string,
+    picUrlType: "user"
 }
 
 // unused

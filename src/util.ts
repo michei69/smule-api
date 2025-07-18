@@ -1,4 +1,4 @@
-import { SmuleSession, type ArrExtended } from "./types/smule-types"
+import { SmuleSession, type ArrExtended, type SFamMembershipType } from "./types/smule-types"
 
 export namespace Util {
     export function getParametersFromUrl(url: string) {
@@ -85,6 +85,23 @@ export namespace SmuleUtil {
 
     export function isVIP(subApps: string[]) {
         return subApps.filter(s => ["sing_google", "sing"].includes(s)).length > 0
+    }
+    
+    export function getGroupMembershipType(membership: number): SFamMembershipType {
+        switch (membership) {
+            case 1:
+                return "ADMIN"
+            case 2:
+                return "MEMBER"
+            case 3:
+                return "PENDING_INVTN"
+            case 4:
+                return "PENDING_RQST"
+            case 5:
+                return "GUEST"
+            default:
+                return "UNKNOWN"
+        }
     }
 
     export function getFilesFromArr(arr: ArrExtended) {
