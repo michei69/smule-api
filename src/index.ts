@@ -4,9 +4,9 @@ import { Smule } from "./smule";
 import type { SmuleSession } from "./types/smule-types";
 import { SmuleDotCom } from "./smuledotcom";
 import { SmuleUrls } from "./smule-urls";
-import { SmuleEffects } from "./smule-effects";
+// import { SmuleEffects } from "./smule-effects";
 
-export { Smule, SmuleDotCom, SmuleUrls, SmuleEffects }
+export { Smule, SmuleDotCom, SmuleUrls }
 export type { SmuleSession }
 
 // TODO: move stuff that shouldn't be exported OUT of these files
