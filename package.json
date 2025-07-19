@@ -7,7 +7,7 @@
     "url": "https://github.com/michei69"
   },
   "license": "MIT",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --clean",
     "dev": "tsup src/index.ts --format esm --watch --dts",
