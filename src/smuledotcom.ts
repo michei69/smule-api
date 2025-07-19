@@ -79,7 +79,7 @@ export class SmuleDotCom {
     // axios isn't saving the cookies itself either way yk
     private axiosInst: AxiosInstance 
     private xsrfToken: string = ""
-    private cookies: string[] = []
+    cookies: string[] = []
 
     constructor() {
         this.resetAxios()
