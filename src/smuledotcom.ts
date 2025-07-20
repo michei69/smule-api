@@ -14,7 +14,7 @@
 // ⠀⠀⠀⠀⠈⠷⣄⠉⢲⡀⠀⠀⠀⠀⠀⠀⠀⠀⠐⠊⠀⠀⠀⢠⠾⠁⠀⠀⠀⠀⠀
 // ⠀⠀⠀⠀⠀⠀⠙⢆⠈⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠋⠀⠀⠀⠀⠀⠀⠀
 // ⠀⠀⠀⠀⠀⠀⠀⠀⠡⠤⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-import type { SDCArr, SDCArrSongConfig, SDCDetectLanguageResponse, SDCGeneratedSegmentsResponse, SDCLoginResult, SDCResourceCreationResult, SDCSaveArrResponse } from "./types/smuledotcom-types.js";
+import type { SDCArr, SDCArrSongConfig, SDCDetectLanguageResponse, SDCGeneratedSegmentsResponse, SDCLoginResult, SDCProfileResult, SDCProfileSongsResult, SDCResourceCreationResult, SDCSaveArrResponse, SDCUser } from "./types/smuledotcom-types.js";
 import type { ApiResult } from "./types/smule-results.js";
 import axios, { type AxiosInstance } from "axios";
 import * as crypto from "crypto"
@@ -35,6 +35,8 @@ export namespace SmuleDotComUrls {
     // user stuff
     export const UserCheckEmail = baseWebApiUrl + '/user/check_email'
     export const UserEmailLogin = baseWebApiUrl + '/user/email_login'
+    export const Profile = baseWebApiUrl + "/profile"
+    export const ProfileSongs = baseWebApiUrl + "/profile/songs"
 
     // upload stuff
     export const UploadAutocomplete = baseSiteUploadUrl + '/autocomplete'
@@ -76,6 +78,7 @@ export namespace SmuleDotComSmulen {
  * otherwise it will error out lol
  */
 export class SmuleDotCom {
+    private accountData: SDCUser = null
     private xsrfToken: string = ""
     cookies: {[key: string]: string} = {}
     
@@ -84,6 +87,14 @@ export class SmuleDotCom {
      */
     resetCookies() {
         this.cookies = {}
+    }
+
+    /**
+     * Fetches the locally saved user data
+     * @returns The user data
+     */
+    getAccount() {
+        return this.accountData
     }
 
     /**
@@ -154,7 +165,22 @@ export class SmuleDotCom {
         })
         const data: SDCLoginResult = req.data
 
+        this.accountData = data.user
+
         return data.success
+    }
+
+    /**
+     * Fetches the currently logged in user
+     * @returns Either the user, or null
+     */
+    async fetchAccount() {
+        const req = await axios.get(SmuleDotComUrls.baseUrl, { headers: this.getHeaders() })
+        for (const match of req.data.matchAll(/init: (.+),/g)) {
+            const loginData = JSON.parse(match[1])
+            this.accountData = loginData.currentUser
+            return this.accountData
+        }
     }
 
 
@@ -366,5 +392,37 @@ export class SmuleDotCom {
         })
 
         return req.data as ApiResult<{}>
+    }
+
+    /**
+     * Fetches a user's profile
+     * @param username The user's username
+     * @returns The user's profile
+     */
+    async fetchProfile(username: string) {
+        const req = await axios.get(SmuleDotComUrls.Profile + "?handle=" + encodeURIComponent(username), {
+            headers: {
+                ...this.getHeaders()
+            }
+        })
+
+        return req.data as SDCProfileResult
+    }
+
+    /**
+     * Fetches the songs of a user
+     * @param accountId The user's account id
+     * @param offset Start index
+     * @param limit How many
+     * @returns The user's songs
+     */
+    async fetchSongs(accountId: number|string, offset = 0, limit = 10) {
+        const req = await axios.get(SmuleDotComUrls.ProfileSongs + "?accountId=" + accountId + "&offset=" + offset + "&limit=" + limit, {
+            headers: {
+                ...this.getHeaders()
+            }
+        })
+
+        return req.data as SDCProfileSongsResult
     }
 }

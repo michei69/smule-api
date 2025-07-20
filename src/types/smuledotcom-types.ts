@@ -1,15 +1,43 @@
 export type SDCLoginResult = {
     success: boolean,
-    user: {
-        account_id: number,
-        handle: string,
-        pic_url: string,
-        url: string,
-        jid: string,
-        xmpp_host: string[],
-        session: string,
-        is_verified: boolean
-    }
+    user: SDCUser
+}
+export type SDCProfileResult = {
+    account_id: number,
+    is_current_user_profile: boolean,
+    handle: string,
+    location?: any, //??
+    pic_url: string,
+    url: string,
+    followers: string, // number
+    followees: string, // number
+    num_performances: string, // number
+    blurb: string,
+    is_following: boolean,
+    is_vip: boolean,
+    is_verified: boolean,
+    verified_type: "unverified"|string, //TODO
+    sfam_count: number,
+    wallet: {
+        credit: number
+    },
+    installed_apps: string[], //smuledotcom, sing, etc.
+}
+
+export type SDCProfileSongsResult = {
+    list: SDCSong[],
+    next_offset: number
+}
+
+export type SDCUser = {
+    account_id: number,
+    handle: string,
+    pic_url: string,
+    url: string,
+    jid: string,
+    xmpp_host: string[],
+    session: string,
+    is_verified: boolean
 }
 
 export type SDCLanguage = {
@@ -148,4 +176,20 @@ export type SDCDetectLanguageResponse = {
         code: string,
         probability: number
     }
+}
+export type SDCSong = {
+    artist: string,
+    cover_url: string,
+    created_at: Date,
+    highly_rated: boolean,
+    key: string,
+    lyrics: boolean,
+    owner: SDCProfileResult,
+    title: string,
+    total_votes: number,
+    web_url: string,
+    lyrics_list: any[], // ??
+    app_family: "SING",
+    last_published_ver: number,
+    process_state: number,
 }
