@@ -51,7 +51,7 @@ export class CustomFormData {
     }
 
     public get(key: string) {
-        return this.data[key].value
+        return this.data[key]?.value
     }
     public serialize() {
         let boundary = "--1335a53d-7c46-4dd6-8e1e-c2f96c3987c5"

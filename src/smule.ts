@@ -81,9 +81,11 @@ export namespace SmuleDigest {
         }
         if (multiPartBody != null) {
             // this is during a performance upload
-            neededParameters["pop"] = parameters["pop"]
+            if (parameters["pop"])
+                neededParameters["pop"] = parameters["pop"]
 
-            neededParameters["jsonData"] = multiPartBody.get("jsonData")
+            if (multiPartBody.get("jsonData"))
+                neededParameters["jsonData"] = multiPartBody.get("jsonData")
         }
 
         return neededParameters
