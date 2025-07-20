@@ -63,8 +63,9 @@ export namespace SmuleDotComSmulen {
     }
 
     export function digest(url: string, csrf: string, data: string) {
-        const shasum = crypto.createHash("md5")
-        return shasum.update(createString(url, csrf, data)).digest("hex")
+        // i cant believe it took me this much time to realise i was hashing in
+        // utf8 instead of ascii this whole time OH MY FUCKING GOD.
+        return crypto.createHash("md5").update(createString(url, csrf, data), "ascii").digest("hex")
     }
 }
 
@@ -75,72 +76,59 @@ export namespace SmuleDotComSmulen {
  * otherwise it will error out lol
  */
 export class SmuleDotCom {
-    // we could change to axios.get() / axios.post(), since 
-    // axios isn't saving the cookies itself either way yk
-    private axiosInst: AxiosInstance 
     private xsrfToken: string = ""
-    cookies: string[] = []
-
-    constructor() {
-        this.resetAxios()
-    }
+    cookies: {[key: string]: string} = {}
     
     /**
-     * Resets the axios instance, clearing
-     * the saved cookies too
+     * Clears the saved cookies
      */
-    resetAxios() {
-        this.axiosInst = axios.create({
-            withCredentials: true,
-            headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/237.84.2.178 Safari/537.36",
-                "Accept": "" // this bitch returns 418 im a teapot! if you have accept set to anything for some fucking reason
-            }
-        })
-        this.cookies = []
+    resetCookies() {
+        this.cookies = {}
     }
 
     /**
      * Fetches a new CSRF token, required for certain actions
      */
     async fetchXsrfToken() {
-        const req = await this.axiosInst.get(SmuleDotComUrls.baseUrl)
+        const req = await axios.get(SmuleDotComUrls.baseUrl, { headers: this.getRequiredHeaders() })
         const html: string = req.data
         for (const match of html.matchAll(/meta content="([^"]+)" name="csrf-token/gm)) {
             this.xsrfToken = match[1]
         }
         for (const cookie of req.headers['set-cookie']) {
-            this.cookies.push(cookie.split(";")[0])
+            const cook = cookie.split(";")[0]
+            this.cookies[cook.split("=")[0]] = cook.split("=")[1]
         }
     }
 
+    // yes we _could_ use an axios instance for this
+    // but i absolutely despise the way they work
+    private getRequiredHeaders() {
+        return {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.7103.48 Safari/537.36", // chrome on windows
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+        }
+    }
     private getHeaders() {
         return {
             "X-CSRF-Token": this.xsrfToken,
-            "Cookie": this.cookies.join("; ") + ";",
+            "Cookie": Object.entries(this.cookies).map(([k, v]) => `${k}=${v}`).join("; ") + ";",
+            ...this.getRequiredHeaders()
         }
     }
     private async postFormEncoded(url: string, data: any) {
-        const req = await this.axiosInst.post(url, new URLSearchParams(data) + "", {
+        const stringData = new URLSearchParams(data).toString()
+        const req = await axios.post(url, stringData, {
             headers: {
                 ...this.getHeaders(),
                 "Content-Type": "application/x-www-form-urlencoded",
-                "X-Smulen": SmuleDotComSmulen.digest(url.replace(SmuleDotComUrls.baseUrl, ""), this.xsrfToken, new URLSearchParams(data).toString())
+                "X-Smulen": SmuleDotComSmulen.digest(url.replace(SmuleDotComUrls.baseUrl, ""), this.xsrfToken, stringData)
             }
         })
         // cookie jar :silly:
         for (const cookie of req.headers['set-cookie']) {
-            let skip = false
-            for (let i = 0; i < this.cookies.length; i++) {
-                if (this.cookies[i].split("=")[0] == cookie.split("=")[0]) {
-                    this.cookies[i] = cookie
-                    skip = true
-                    break
-                }
-            }
-            if (!skip) {
-                this.cookies.push(cookie.split(";")[0])
-            }
+            const cook = cookie.split(";")[0]
+            this.cookies[cook.split("=")[0]] = cook.split("=")[1]
         }
         return req
     }
@@ -199,7 +187,7 @@ export class SmuleDotCom {
             duration: 0
         }))
 
-        const initReq = await this.axiosInst.get(`${SmuleDotComUrls.baseUrl}/en/s/upload`, {
+        const initReq = await axios.get(`${SmuleDotComUrls.baseUrl}/en/s/upload`, {
             headers: {
                 ...this.getHeaders()
             }
@@ -208,7 +196,7 @@ export class SmuleDotCom {
 
         console.log(this.getUploadDataFromHtml(initReq.data))
 
-        const req = await this.axiosInst.post(`${uploadUrl}`, temp)
+        const req = await axios.post(`${uploadUrl}`, temp, { headers: this.getRequiredHeaders() })
         const data: ApiResult<SDCResourceCreationResult> = req.data
         return {
             artist: "",
@@ -253,7 +241,7 @@ export class SmuleDotCom {
      * @returns The arrangement's song config
      */
     async fetchArrUploadData(arrKey: string) {
-        const req = await this.axiosInst.get(SmuleDotComUrls.getArrLyricSync(arrKey), {
+        const req = await axios.get(SmuleDotComUrls.getArrLyricSync(arrKey), {
             headers: {
                 ...this.getHeaders()
             }
@@ -268,7 +256,7 @@ export class SmuleDotCom {
      * @returns The generated segments
      */
     async generateSegments(arr: SDCArr) {
-        const req = await this.axiosInst.post(SmuleDotComUrls.GenerateSegments, arr, {
+        const req = await axios.post(SmuleDotComUrls.GenerateSegments, arr, {
             headers: {
                 ...this.getHeaders()
             }
@@ -283,7 +271,7 @@ export class SmuleDotCom {
      * @returns Data about the arrangement (ex: the web url)
      */
     async saveArr(arr: SDCArr) {
-        const req = await this.axiosInst.post(SmuleDotComUrls.SaveArr, arr, {
+        const req = await axios.post(SmuleDotComUrls.SaveArr, arr, {
             headers: {
                 ...this.getHeaders()
             }
@@ -296,7 +284,7 @@ export class SmuleDotCom {
      * Fetches title suggestions
      */
     async fetchTitleAutocomplete(query: string) {
-        const req = await this.axiosInst.get(`${SmuleDotComUrls.UploadAutocompleteTitle}?term=${encodeURIComponent(query)}&appFamily=SING`)
+        const req = await axios.get(`${SmuleDotComUrls.UploadAutocompleteTitle}?term=${encodeURIComponent(query)}&appFamily=SING`, { headers: this.getRequiredHeaders() })
         return req.data as {title: string}[]
     }
 
@@ -304,7 +292,7 @@ export class SmuleDotCom {
      * Fetches artist suggestions
      */
     async fetchArtistAutocomplete(query: string) {
-        const req = await this.axiosInst.get(`${SmuleDotComUrls.UploadAutocompleteArtist}?term=${encodeURIComponent(query)}&appFamily=SING`)
+        const req = await axios.get(`${SmuleDotComUrls.UploadAutocompleteArtist}?term=${encodeURIComponent(query)}&appFamily=SING`, { headers: this.getRequiredHeaders() })
         return req.data as {value: string}[]
     }
 
@@ -313,7 +301,7 @@ export class SmuleDotCom {
      * @remarks You can only upload genres that are autocompleted
      */
     async fetchGenreAutocomplete(query: string) {
-        const req = await this.axiosInst.get(`${SmuleDotComUrls.UploadAutocompleteGenre}?term=${encodeURIComponent(query)}&appFamily=SING`)
+        const req = await axios.get(`${SmuleDotComUrls.UploadAutocompleteGenre}?term=${encodeURIComponent(query)}&appFamily=SING`, { headers: this.getRequiredHeaders() })
         return req.data as {value: {topicId: number, name: string}}[]
     }
 
@@ -321,7 +309,7 @@ export class SmuleDotCom {
      * Fetches tag suggestions
      */
     async fetchTagAutocomplete(query: string) {
-        const req = await this.axiosInst.get(`${SmuleDotComUrls.UploadAutocompleteTag}?term=${encodeURIComponent(query)}&appFamily=SING`)
+        const req = await axios.get(`${SmuleDotComUrls.UploadAutocompleteTag}?term=${encodeURIComponent(query)}&appFamily=SING`, { headers: this.getRequiredHeaders() })
         return req.data as {value: string}[]
     }
 
@@ -333,7 +321,7 @@ export class SmuleDotCom {
      * @returns Whether or not you're restricted (i think)
      */
     async matchCatalog(title: string, artist: string, tags: string[]) {
-        const req = await this.axiosInst.post(SmuleDotComUrls.UploadCatalogMatch, {
+        const req = await axios.post(SmuleDotComUrls.UploadCatalogMatch, {
             appFamily: "SING",
             artist,
             title,
@@ -353,7 +341,7 @@ export class SmuleDotCom {
      * @returns The detected language
      */
     async detectLanguage(text: string) {
-        const req = await this.axiosInst.post(SmuleDotComUrls.DetectLanguage, {
+        const req = await axios.post(SmuleDotComUrls.DetectLanguage, {
             text
         }, {
             headers: {
@@ -369,7 +357,7 @@ export class SmuleDotCom {
      * @param arrKey The arrangement's key
      */
     async deleteArr(arrKey: string) {
-        const req = await this.axiosInst.post(SmuleDotComUrls.DeleteArr, {
+        const req = await axios.post(SmuleDotComUrls.DeleteArr, {
             arrKey
         }, {
             headers: {
