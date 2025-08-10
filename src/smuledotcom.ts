@@ -29,6 +29,7 @@ export namespace SmuleDotComUrls {
 
     export const baseWebApiUrl = baseUrl + "/api" // actual api
     export const baseSiteApiUrl = baseUrl + "/s" // site related stuff
+    export const baseWebUploadUrl = baseWebApiUrl + "/upload"
     export const baseSiteUploadUrl = baseSiteApiUrl + "/upload"
     export const songUploadArrApi = baseSiteUploadUrl + "/arr"
 
@@ -39,7 +40,7 @@ export namespace SmuleDotComUrls {
     export const ProfileSongs = baseWebApiUrl + "/profile/songs"
 
     // upload stuff
-    export const UploadAutocomplete = baseSiteUploadUrl + '/autocomplete'
+    export const UploadAutocomplete = baseWebUploadUrl + '/autocomplete'
     export const UploadAutocompleteTitle = UploadAutocomplete + '/title'
     export const UploadAutocompleteArtist = UploadAutocomplete + '/artist'
     export const UploadAutocompleteGenre = UploadAutocomplete + '/genre'

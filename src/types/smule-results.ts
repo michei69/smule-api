@@ -55,6 +55,11 @@ export type ArrBookmarkListResult = {
     cursor: Cursor,
     totalCount: number
 }
+export type ArrOwnedBy = {
+    arrVersionLites: Arr[],
+    arrCount: number,
+    next: number
+}
 
 export type AvTemplateCategoryListResult = {
     recAvTemplateLites: Array<{

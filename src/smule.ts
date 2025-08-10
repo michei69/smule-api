@@ -22,7 +22,7 @@
 // ⠠⢸⣿⣿⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⢀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣿⣿⣿⣿⣿⣿⣿⣿
 // ⠀⠛⣿⣿⣿⡿⠏⠀⠀⠀⠀⠀⠀⢳⣾⣿⣿⣿⣿⣿⣿⡶⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿
 // ⠀ ⠀⠉⠉⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣿⡿⡿⠿⠛⠙⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⠏⠉⠻⠿⠟⠁
-import type { ApiResult, PreuploadResult, PerformanceCreateResult, LoginAsGuestResult, LoginResult, PerformanceCommentsResult, PerformanceCreateCommentResult, SocialBlockListResult, InviteMeResult, InviteListResult, SongbookResult, CategorySongsResult, CategoryListResult, ArrResult, ArrByKeysResult, PerformanceByKeysResult, PerformancesByUserResult, PerformancesByAvTemplateResult, PerformancePartsResult, PerformanceDetailsResult, SearchResult, AvTemplateCategoryListResult, PlaylistExploreResult, PlaylistGetResult, AccountExploreResult, SocialFeedListResult, SettingsResult, AccountLookupResult, SingUserProfileResult, SocialIsFollowingResult, SocialFolloweesResult, SocialFollowersResult, SocialCommentLikesResult, AccountProfileStatsViewsResult, PerformanceResult, RecTrendingSearchResult, SearchAutocompleteResult, SFamListResult, CampfireListResult, UserUploadPictureResult, ContactFindResult, TopicOptionResult, PreferencesResult, SFamInfoResult, SFamMemberListResult, PlaylistViewResult, PerformanceBookmarkSeedResult, ArrBookmarkListResult } from "./types/smule-results";
+import type { ApiResult, PreuploadResult, PerformanceCreateResult, LoginAsGuestResult, LoginResult, PerformanceCommentsResult, PerformanceCreateCommentResult, SocialBlockListResult, InviteMeResult, InviteListResult, SongbookResult, CategorySongsResult, CategoryListResult, ArrResult, ArrByKeysResult, PerformanceByKeysResult, PerformancesByUserResult, PerformancesByAvTemplateResult, PerformancePartsResult, PerformanceDetailsResult, SearchResult, AvTemplateCategoryListResult, PlaylistExploreResult, PlaylistGetResult, AccountExploreResult, SocialFeedListResult, SettingsResult, AccountLookupResult, SingUserProfileResult, SocialIsFollowingResult, SocialFolloweesResult, SocialFollowersResult, SocialCommentLikesResult, AccountProfileStatsViewsResult, PerformanceResult, RecTrendingSearchResult, SearchAutocompleteResult, SFamListResult, CampfireListResult, UserUploadPictureResult, ContactFindResult, TopicOptionResult, PreferencesResult, SFamInfoResult, SFamMemberListResult, PlaylistViewResult, PerformanceBookmarkSeedResult, ArrBookmarkListResult, ArrOwnedBy } from "./types/smule-results";
 import { SearchAutocompleteRequest, AvTemplateCategoryListRequest, CategoryRequest, IsFollowingRequest, LoginAsGuestRequest, LoginCommonData, LoginRequest, PerformanceCreateRequest, PerformancePartsRequest, PerformanceReq, PerformancesListRequest, PreuploadRequest, SingUserProfileRequest, SearchRequest, SettingsRequest, SongbookRequest, UpdateFollowingRequest } from "./types/smule-requests";
 import type { AccountIcon, CampfireSyncResult, Contact, EnsembleType, PerformanceDetail, PerformanceIcon, PerformanceList, PerformancesFillStatus, PerformanceSortMethod, PerformancesSortOrder, PlaylistIcon, PlaylistSortMethod, PlaylistVisibility, SearchResultSort, SearchResultType, SFam, SFamList } from "./types/smule-types";
 import { SmuleSession, SmuleErrorCode, SmuleRegisterErrorCode } from "./types/smule-types";
@@ -1199,11 +1199,17 @@ export class Smule {
             return this.internal._getResponseData<ArrByKeysResult>(req)
         },
 
-        // TODO: test and doc
+        /**
+         * Fetches songs created by a certain user
+         * @param ownerId The account's id
+         * @param offset The start offset
+         * @param limit How many
+         * @returns The songs
+         */
         fetchOwnedBy: async (ownerId: number, offset = 0, limit = 10) => {
             const req = await this.internal._createRequest(SmuleUrls.ArrOwned, { ownerAccountId: ownerId, offset, limit })
             if (!this.internal._handleNon200(req)) return
-            return this.internal._getResponseData<any>(req)
+            return this.internal._getResponseData<ArrOwnedBy>(req)
         },
 
         /**
