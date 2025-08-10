@@ -310,7 +310,7 @@ export class SmuleChat {
      */
     public getUserIdFromJID(jid: string|JID) {
         if (!(typeof jid == "string")) return parseInt(jid.getLocal())
-        if (jid.includes("/")) return parseInt(jid.split("/")[1])
+        // if (jid.includes("/")) return parseInt(jid.split("/")[1])
         return parseInt(jid.split("@")[0])
     }
     /**
