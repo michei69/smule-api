@@ -41,6 +41,7 @@ import { SmuleUrls } from "./smule-urls"
 import { Element } from "@xmpp/xml"
 import EventEmitter from "events"
 import { JID } from "@xmpp/jid"
+import debug from "@xmpp/debug"
 
 //TODO
 export class SmuleLiveChat {
@@ -56,7 +57,7 @@ export class SmuleLiveChat {
 
     private chat: SmuleChatContainer = { messages: [] }
 
-    constructor(userId: number, session: string, host = SmuleUrls.userChat, roomJID?: string) {
+    constructor(userId: number, session: string, host = SmuleUrls.cfireChat, roomJID?: string) {
         this.client = client({
             service: "xmpp://" + host,
             domain: host,
@@ -64,6 +65,7 @@ export class SmuleLiveChat {
             username: userId + "",
             password: session
         })
+        debug(this.client, true)
 
         this.roomJID = roomJID
 
