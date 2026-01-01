@@ -41,17 +41,14 @@ import { SmuleUrls } from "./smule-urls"
 import { Element } from "@xmpp/xml"
 import EventEmitter from "events"
 import { JID } from "@xmpp/jid"
-import debug from "@xmpp/debug"
+import { randomUUID } from "crypto"
 
-//TODO
 export class SmuleLiveChat {
     public events: EventEmitter = new EventEmitter()
     public state: SmuleChatState = "closed"
     private client: Client
     private jid: JID
-    private ongoingIq = false
-    private iqHasMore = false
-    private lastIqId = "0"
+    private iqs = {}
     private roomJID: string = null
     private roomUsers = []
 
@@ -65,7 +62,6 @@ export class SmuleLiveChat {
             username: userId + "",
             password: session
         })
-        debug(this.client, true)
 
         this.roomJID = roomJID
 
@@ -109,6 +105,9 @@ export class SmuleLiveChat {
                 )
             )
         )
+        this.sendIqQuery("http://jabber.org/protocol/disco#info", (el) => {
+            console.log("reply from disco", el)
+        })
     }
     /**
      * Disconnects the client from the XMPP server.
@@ -120,84 +119,41 @@ export class SmuleLiveChat {
      */
     public async disconnect() {
         try {
+            await this.client.send(xml("presence", { type: "unavailable" }))
             await this.client.stop()
         } catch {}
     }
 
-    /**
-     * Send a chat state to the server. This is used to
-     * signal whether you are currently active or not.
-     *
-     * active -> You're active
-     * 
-     * composing -> Typing
-     * 
-     * paused -> Just stopped typing
-     * 
-     * inactive -> You're inactive
-     * 
-     * gone -> You're hidden / disconnected / You've left the chat
-     * 
-     * @param state One of `active`, `composing`, `paused`, `inactive`, or `gone`.
-     *              Default is `active`
-     */
-    public async sendChatState(to: JID | string | AccountIcon, state: SmulePartnerStatus = "active") {
-        if (typeof to != "string" && "accountId" in to) to = this.getJIDFromUserId(to.accountId)
-        await this.client.send(
-            xml(
-                "message",
-                { to: to.toString(), type: "chat" },
-                xml(
-                    "chatstate",
-                    { xmlns: 'http://jabber.org/protocol/chatstates' },
-                    state
-                )
-            )
-        )
-    }
-    /**
-     * Loads the entire message history
-     * @param limit The maximum number of messages to fetch. Default is 50.
-     * @remarks This currently recurses until it loads ALL archived messages.
-     *          This means that it will take a long time to load all messages.
-     * @remarks Filtering by a specific JID may not work yet
-     */
-    public async loadMessageHistory(limit = 50, before = null, after = null, jid?: JID | string) {
-        this._log("Loading live chat history...")
-        
-        this.ongoingIq = true
-        await this.client.send(
+    public sendIq(data: Element, callback: any, iqType = "get") {
+        const id = randomUUID()
+        this.iqs[id] = callback
+        this.client.send(
             xml(
                 "iq",
-                { from: this.jid.toString(), to: this.roomJID, type: "get", id: "meow" },
-                xml(
-                    "query",
-                    { xmlns: "http://jabber.org/protocol/muc#history" },
-                )
+                { from: this.jid.toString(), to: this.roomJID, type: iqType, id },
+                data
             )
         )
-        while (this.ongoingIq) await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+    public sendIqQuery(xmlns: string, callback: any, iqType = "get") {
+        this.sendIq(
+            xml("query", { xmlns }),
+            callback,
+            iqType
+        )
     }
     /**
-     * Send a text message
-     * @param jid The JID to send the message to
+     * Send a text message to the livestream
      * @param message The message body
      */
-    public async sendTextMessage(jid: JID | string | AccountIcon, message: string) {
-        if (typeof jid != "string" && "accountId" in jid) jid = this.getJIDFromUserId(jid.accountId)
+    public async sendTextMessage(message: string) {
         await this.client.send(
             xml(
                 "message",
-                { to: jid.toString(), type: "groupchat" },
+                { to: this.roomJID, type: "groupchat" },
                 xml("body", {}, message)
             )
         )
-        const data = {
-            sender: parseInt(this.jid.getLocal()),
-            content: message,
-        }
-        this.chat[this.getUserIdFromJID(jid.toString())].messages.push(data)
-        this.events.emit("message", data)
     }
 
 
@@ -329,6 +285,26 @@ export class SmuleLiveChat {
             this.events.emit("host-left", data)
         }
 
+        // on song-listen idk
+        child = el.getChild("song-listen")
+        if (child) {
+            const data = {
+                arrKey: child.getChild("arrangement-key").getText(),
+                hostSessionId: child.getChild("host-session-id").getText()
+            }
+            this._log("Got song listen!", data)
+            this.events.emit("song-listen", data)
+        }
+
+        // on stop livestream
+        child = el.getChild("campfire-ended")
+        if (child) {
+            const data = {
+                reason: child.getChild("reason").getText()
+            }
+            this._log("Got stop livestream!", data)
+            this.events.emit("stop-livestream", data)
+        }
 
         // on history received
         child = el.getChild("result")
@@ -356,15 +332,23 @@ export class SmuleLiveChat {
         if (child) {
             child = child.getChild("item")
             if (child) {
-                if (!el.getAttr("jid")) return
-                const data = {
-                    user: this.getUserIdFromJID(el.getAttr("jid")),
-                    role: child.getAttr("role"),
-                    affiliation: child.getAttr("affiliation"),
+                if (!el.getAttr("jid")) {
+                    // todo: handle self presence, and kicks
+                    // <item role='none' affiliation='none'>
+                    //     <reason>
+                    //         You are being removed from the room because of a system shutdown
+                    //     </reason>
+                    // </item>
+                } else {
+                    const data = {
+                        user: this.getUserIdFromJID(el.getAttr("jid")),
+                        role: child.getAttr("role"),
+                        affiliation: child.getAttr("affiliation"),
+                    }
+                    this._log("Got presence!", data)
+                    this.roomUsers.push(data)
+                    this.events.emit("presence", data)
                 }
-                this._log("Got presence!", data)
-                this.roomUsers.push(data)
-                this.events.emit("presence", data)
             }
         }
     }
@@ -465,22 +449,11 @@ export class SmuleLiveChat {
             this.parsePresence(el)
         } else {
             if (el.is("iq")) {
-                let child = el.getChild("fin")
-                if (child) {
-                    if (child.getAttr("complete") == "false") {
-                        this.iqHasMore = true
-                        child = child.getChild("set")
-                        if (child) {
-                            child = child.getChild("last")
-                            if (child) {
-                                this.lastIqId = child.getText()
-                            }
-                        }
-                    } else {
-                        this.iqHasMore = false
-                    }
+                const id = el.getAttr("id")
+                if (id) {
+                    this.iqs[id](el)
+                    delete this.iqs[id]
                 }
-                this.ongoingIq = false
             }
             this._log("Stanza!", el.toString())
         }

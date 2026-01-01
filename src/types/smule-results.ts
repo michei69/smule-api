@@ -104,6 +104,15 @@ export type GiftsResult = {
     }>,
     giftCount: number
 }
+export type GiftRecentTransactionsResult = {
+    transactions: Array<{
+        giverAccountIcon: AccountIcon,
+        giftIcon: GiftIcon,
+        time: Date
+    }>,
+    cursor: Cursor,
+    giftCnt: number
+}
 
 export type InviteMeResult = {
     invites: SocialInvite[],
@@ -440,6 +449,18 @@ export type SongbookResult = {
     cat1Cursor: Cursor,
     disinterestedSongs: Array<Song>
 }
+
+export type SparkChatListResult = {
+    inbox: Array<{
+        name: string, // jid
+        type: "ACCT" | "GRP"
+    }>,
+    other: Array<{ // message requests
+        name: string,
+        type: "ACCT" | "GRP"
+    }>
+}
+
 export type StoreSubscriptionStatusResult = {
     isActive: boolean,
     status: string,

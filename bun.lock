@@ -1,13 +1,10 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "smule-api",
       "dependencies": {
-        "@types/xmpp__debug": "^0.14.0",
         "@xmpp/client": "^0.14.0",
-        "@xmpp/debug": "^0.14.0",
         "@xmpp/jid": "^0.14.0",
         "@xmpp/resolve": "^0.14.0",
         "@xmpp/starttls": "^0.14.0",
@@ -366,8 +363,6 @@
 
     "@types/xmpp__connection": ["@types/xmpp__connection@0.13.3", "", { "dependencies": { "@types/xmpp__error": "*", "@types/xmpp__events": "*", "@types/xmpp__jid": "*", "@types/xmpp__xml": "*" } }, "sha512-WqW5VEyARmUzDiX++yFQbtPCFee7uWGcd5wcdMQXkl7SMKTFioxPbPbKVe8eOFsnUhq+6uxLrkUJqVlCumelCQ=="],
 
-    "@types/xmpp__debug": ["@types/xmpp__debug@0.14.0", "", { "dependencies": { "@types/xmpp__connection": "*", "@types/xmpp__xml": "*" } }, "sha512-aC6k4QRRIbPPcoYILsxT0CvvK3J2pjmZfdsyI7pccUQAw9WTKR3K2q4LGaasCcplNsPxtdjkiOU6T8ZAtGZsiQ=="],
-
     "@types/xmpp__error": ["@types/xmpp__error@0.13.3", "", { "dependencies": { "@types/xmpp__xml": "*" } }, "sha512-N7/PUc4+Q5aRDJ4Ipm9NbtKiCNHR763Z+9CdPQpc/PElwblsy62gJEmBgKj8d4yotMn9pwNMEg9NHcFh2mTBZQ=="],
 
     "@types/xmpp__events": ["@types/xmpp__events@0.13.3", "", { "dependencies": { "@types/node": "*" } }, "sha512-GW844fKApo5wRg2MUlceETZFAdKO2zqElAQJZaR41oqDn5uv0BfnFUAbJ1MCGeyO0Ul0pyNw3m5/mzskiM/u2A=="],
@@ -445,8 +440,6 @@
     "@xmpp/connection": ["@xmpp/connection@0.14.0", "", { "dependencies": { "@xmpp/error": "^0.14.0", "@xmpp/events": "^0.14.0", "@xmpp/jid": "^0.14.0", "@xmpp/xml": "^0.14.0" } }, "sha512-VRnukXwiXWCsRVQVISUiAxHHgRWH37nxdUaz50o0+cUAYyqtlHIJ2zy+ZHMlxkEWtl+XciNLxwkJKbypJFQheQ=="],
 
     "@xmpp/connection-tcp": ["@xmpp/connection-tcp@0.14.0", "", { "dependencies": { "@xmpp/connection": "^0.14.0", "@xmpp/xml": "^0.14.0" } }, "sha512-gvYyUghuCHW0qalEYaZvbHeTnEoXc+hCCWP/qvoVGjjSQNwkYRUsy1/8RP/sA6RlQ2sR0nhpkJkJE6K/4rsFIQ=="],
-
-    "@xmpp/debug": ["@xmpp/debug@0.14.0", "", { "dependencies": { "@xmpp/xml": "^0.14.0", "ltx": "^3.1.2" } }, "sha512-Smj0ECPLVMbPjh4gMPgzhCzXHgQonJ9drZP/3MKJygRzUk92H/dr9Pfrq3odBAiqbTbnKQxxeanE2LG8m3YSgA=="],
 
     "@xmpp/error": ["@xmpp/error@0.14.0", "", {}, "sha512-b4W/MwAZl8basfmYhcemK3De92xBOiSrIz0VY2cnN2ss1VMsa4d32GuaJGBIpa4ulN/2DFb3vPCeTn5jXvHAJw=="],
 

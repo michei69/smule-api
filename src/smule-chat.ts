@@ -41,19 +41,16 @@ import { SmuleUrls } from "./smule-urls"
 import { Element } from "@xmpp/xml"
 import EventEmitter from "events"
 import { JID } from "@xmpp/jid"
+import { randomUUID } from "crypto"
 
-//TODO
+// TODO: implement groupchats too (similar to livechat, but different enough that its annoying)
 export class SmuleChat {
     public events: EventEmitter = new EventEmitter()
     public state: SmuleChatState = "closed"
     private client: Client
     private jid: JID
-    private ongoingIq = false
-    private iqHasMore = false
-    private lastIqId = "0"
-    private isLive = false
+    private iqs = {}
     private roomJID: string = null
-    private roomUsers = []
 
     private chats: { [key: number]: SmuleChatContainer } = {}
 
@@ -66,7 +63,6 @@ export class SmuleChat {
             password: session
         })
 
-        this.isLive = host != SmuleUrls.userChat || !!roomJID
         this.roomJID = roomJID
 
         this.client.on("close", (el) => this.onClose(el))
@@ -92,27 +88,7 @@ export class SmuleChat {
     public async connect() {
         this.jid = await this.client.start()
         this._log("Connected as:", this.jid.getLocal() + "@" + this.jid.getDomain())
-        if (!this.isLive && !this.roomJID) {
-            this.client.send(xml("presence", {}))
-        } else {
-            this.client.send(
-                xml(
-                    "presence",
-                    { to: this.roomJID + "/" + this.jid.getLocal() },
-                    xml(
-                        "x", 
-                        { xmlns: "http://jabber.org/protocol/muc" },
-                        xml(
-                            "password"
-                        ),
-                        xml(
-                            "history",
-                            { maxstanzas: "1"}
-                        )
-                    )
-                )
-            )
-        }
+        this.client.send(xml("presence", {}))
     }
     /**
      * Disconnects the client from the XMPP server.
@@ -124,8 +100,28 @@ export class SmuleChat {
      */
     public async disconnect() {
         try {
+            await this.client.send(xml("presence", { type: "unavailable" }))
             await this.client.stop()
         } catch {}
+    }
+
+    public sendIq(data: Element, callback: any, iqType = "get") {
+        const id = randomUUID()
+        this.iqs[id] = callback
+        this.client.send(
+            xml(
+                "iq",
+                { from: this.jid.toString(), to: this.roomJID, type: iqType, id },
+                data
+            )
+        )
+    }
+    public sendIqQuery(xmlns: string, callback: any, iqType = "get") {
+        this.sendIq(
+            xml("query", { xmlns }),
+            callback,
+            iqType
+        )
     }
 
     /**
@@ -167,52 +163,29 @@ export class SmuleChat {
      * @remarks Filtering by a specific JID may not work yet
      */
     public async loadMessageHistory(limit = 50, before = null, after = null, jid?: JID | string) {
-        if (!this.isLive) {
-            if (this.ongoingIq) this._log("Waiting for previous iq to finish...")
-            while (this.ongoingIq) await new Promise((resolve) => setTimeout(resolve, 100))
-            if (jid)
-                this._log(`Loading ${limit} messages with ${jid}...`)
-            else
-                this._log(`Loading ${limit} messages from history...`)
-    
-            // reset all chats before fetching history
-            if (!before && !after && !jid) this.chats = {}
-    
-            this.ongoingIq = true
-            await this.client.send(
-                xml(
-                    'iq',
-                    { type: 'set', id: 'mam-query' },
-                    xml(
-                        'query',
-                        { xmlns: 'urn:xmpp:mam:2' },
-                        xml('set', { xmlns: 'http://jabber.org/protocol/rsm' },
-                            xml('max', {}, limit.toString()),
-                            before ? xml('before', {}, before.toString()) : null,
-                            after ? xml('after', {}, after.toString()) : null
-                        ),
-                        jid ? xml('with', {}, jid.toString()) : null
-                    )
-                )
-            )
-            while (this.ongoingIq) await new Promise((resolve) => setTimeout(resolve, 100))
-            if (this.iqHasMore) await this.loadMessageHistory(limit, null, this.lastIqId, jid)
-        } else {
-            this._log("Loading live chat history...")
-            
-            this.ongoingIq = true
-            await this.client.send(
-                xml(
-                    "iq",
-                    { from: this.jid.toString(), to: this.roomJID, type: "get", id: "meow" },
-                    xml(
-                        "query",
-                        { xmlns: "http://jabber.org/protocol/muc#history" },
-                    )
-                )
-            )
-            while (this.ongoingIq) await new Promise((resolve) => setTimeout(resolve, 100))
-        }
+        if (jid)
+            this._log(`Loading ${limit} messages with ${jid}...`)
+        else
+            this._log(`Loading ${limit} messages from history...`)
+
+        // reset all chats before fetching history
+        if (!before && !after && !jid) this.chats = {}
+        this.sendIq(
+            xml(
+                'query',
+                { xmlns: 'urn:xmpp:mam:2' },
+                xml('set', { xmlns: 'http://jabber.org/protocol/rsm' },
+                    xml('max', {}, limit.toString()),
+                    before ? xml('before', {}, before.toString()) : null,
+                    after ? xml('after', {}, after.toString()) : null
+                ),
+                jid ? xml('with', {}, jid.toString()) : null
+            ),
+            (el: Element) => {
+                this._log("Finished loading history!", el.toString())
+            },
+            "set"
+        )
     }
     /**
      * Send a text message
@@ -224,16 +197,10 @@ export class SmuleChat {
         await this.client.send(
             xml(
                 "message",
-                { to: jid.toString(), type: this.isLive ? "groupchat" : "chat" },
+                { to: jid.toString(), type: "chat" },
                 xml("body", {}, message)
             )
         )
-        let data = {
-            sender: parseInt(this.jid.getLocal()),
-            content: message,
-        }
-        this.chats[this.getUserIdFromJID(jid.toString())].messages.push(data)
-        this.events.emit("message", data)
     }
     /**
      * Send a performance / recording 
@@ -273,27 +240,6 @@ export class SmuleChat {
             )
         )
     }
-    
-    //TODO - Most definitely not required
-    private async archiveMessage(jid: JID | string | AccountIcon, message: string) {
-        if (typeof jid != "string" && "accountId" in jid) jid = this.getJIDFromUserId(jid.accountId)
-        await this.client.send(
-            xml(
-                "iq",
-                { type: "set" },
-                xml(
-                    "archive",
-                    { xmlns: "urn:xmpp:mam:2" },
-                    xml(
-                        "item",
-                        { with: jid, id: Math.random().toString(16).substring(2, 8) },
-                        xml("body", {}, message)
-                    )
-                )
-            )
-        )
-    }
-
 
     /**
      * Read-only jid to prevent any bugs
@@ -310,7 +256,6 @@ export class SmuleChat {
      */
     public getUserIdFromJID(jid: string|JID) {
         if (!(typeof jid == "string")) return parseInt(jid.getLocal())
-        // if (jid.includes("/")) return parseInt(jid.split("/")[1])
         return parseInt(jid.split("@")[0])
     }
     /**
@@ -320,7 +265,6 @@ export class SmuleChat {
      */
     public getJIDFromUserId(userId: number|string|AccountIcon) {
         if (typeof userId != "string" && typeof userId != "number" && "accountId" in userId) userId = userId.accountId
-        if (this.isLive) return this.roomJID + "/" + userId
         return userId + "@" + this.jid.getDomain()
     }
 
@@ -349,7 +293,6 @@ export class SmuleChat {
 
         child = el.getChild("body")
         const perfChild = el.getChild("performance")
-        const perfStartChild = el.getChild("performance-start") // live-only
         if (child && (child.getText().trim().length > 0 || perfChild)) {
             this._log("Got message!", child.getText())
             let performanceKey = undefined
@@ -384,7 +327,8 @@ export class SmuleChat {
             content: child.getText(),
             sender: this.getUserIdFromJID(child.parent.getAttr("from")),
             id: child.parent.getAttr("id"),
-            performanceKey: performanceKey
+            performanceKey: performanceKey,
+            systemMessage: !!child.parent.getChild("smule-system-msg")
         }
         let chat = this.jid.getLocal().includes(data.sender + "") ? this.getUserIdFromJID(child.parent.getAttr("to")) : data.sender
         this.events.emit("history", data)
@@ -394,26 +338,6 @@ export class SmuleChat {
     
     private parsePresence(el: Element) {
         if (el.children.length < 1) return
-        if (this.isLive) {
-            let child = el.getChildByAttr("xmlns", "http://jabber.org/protocol/muc#user")
-            if (child) {
-                child = child.getChild("item")
-                if (child) {
-                    if (!el.getAttr("jid")) return
-                    let user = this.getUserIdFromJID(el.getAttr("jid"))
-                    let role = child.getAttr("role")
-                    let affiliation = child.getAttr("affiliation")
-
-                    let data = {
-                        user,
-                        role,
-                        affiliation
-                    }
-                    this.roomUsers.push(data)
-                    this.events.emit("presence", data)
-                }
-            }
-        }
     }
 
     /**
@@ -430,10 +354,6 @@ export class SmuleChat {
     public fetchChat(user: number) {
         if (!(user in this.chats)) this.chats[user] = { messages: [] }
         return this.chats[user]
-    }
-
-    public fetchUsers() {
-        return this.roomUsers
     }
     
 
@@ -521,22 +441,11 @@ export class SmuleChat {
             this.parsePresence(el)
         } else {
             if (el.is("iq")) {
-                let child = el.getChild("fin")
-                if (child) {
-                    if (child.getAttr("complete") == "false") {
-                        this.iqHasMore = true
-                        child = child.getChild("set")
-                        if (child) {
-                            child = child.getChild("last")
-                            if (child) {
-                                this.lastIqId = child.getText()
-                            }
-                        }
-                    } else {
-                        this.iqHasMore = false
-                    }
+                const id = el.getAttr("id")
+                if (id) {
+                    this.iqs[id](el)
+                    delete this.iqs[id]
                 }
-                this.ongoingIq = false
             }
             this._log("Stanza!", el.toString())
         }
@@ -545,13 +454,13 @@ export class SmuleChat {
 
 //#region Logging
     private _log(...args: any) {
-        console.log(this.isLive ? "[SmuleLiveChat]" : "[SmuleChat]", ...args)
+        console.log("[SmuleChat]", ...args)
     }
     private _warn(...args: any) {
-        console.warn(this.isLive ? "[SmuleLiveChat]" : "[SmuleChat]", ...args)
+        console.warn("[SmuleChat]", ...args)
     }
     private _error(...args: any) {
-        console.error(this.isLive ? "[SmuleLiveChat]" : "[SmuleChat]", ...args)
+        console.error("[SmuleChat]", ...args)
     }
 //#endregion Logging
 }

@@ -22,7 +22,7 @@
 // ⠠⢸⣿⣿⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⢀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣿⣿⣿⣿⣿⣿⣿⣿
 // ⠀⠛⣿⣿⣿⡿⠏⠀⠀⠀⠀⠀⠀⢳⣾⣿⣿⣿⣿⣿⣿⡶⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿
 // ⠀ ⠀⠉⠉⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣿⡿⡿⠿⠛⠙⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⠏⠉⠻⠿⠟⠁
-import type { ApiResult, PreuploadResult, PerformanceCreateResult, LoginAsGuestResult, LoginResult, PerformanceCommentsResult, PerformanceCreateCommentResult, SocialBlockListResult, InviteMeResult, InviteListResult, SongbookResult, CategorySongsResult, CategoryListResult, ArrResult, ArrByKeysResult, PerformanceByKeysResult, PerformancesByUserResult, PerformancesByAvTemplateResult, PerformancePartsResult, PerformanceDetailsResult, SearchResult, AvTemplateCategoryListResult, PlaylistExploreResult, PlaylistGetResult, AccountExploreResult, SocialFeedListResult, SettingsResult, AccountLookupResult, SingUserProfileResult, SocialIsFollowingResult, SocialFolloweesResult, SocialFollowersResult, SocialCommentLikesResult, AccountProfileStatsViewsResult, PerformanceResult, RecTrendingSearchResult, SearchAutocompleteResult, SFamListResult, CampfireListResult, UserUploadPictureResult, ContactFindResult, TopicOptionResult, PreferencesResult, SFamInfoResult, SFamMemberListResult, PlaylistViewResult, PerformanceBookmarkSeedResult, ArrBookmarkListResult, ArrOwnedBy } from "./types/smule-results";
+import type { ApiResult, PreuploadResult, PerformanceCreateResult, LoginAsGuestResult, LoginResult, PerformanceCommentsResult, PerformanceCreateCommentResult, SocialBlockListResult, InviteMeResult, InviteListResult, SongbookResult, CategorySongsResult, CategoryListResult, ArrResult, ArrByKeysResult, PerformanceByKeysResult, PerformancesByUserResult, PerformancesByAvTemplateResult, PerformancePartsResult, PerformanceDetailsResult, SearchResult, AvTemplateCategoryListResult, PlaylistExploreResult, PlaylistGetResult, AccountExploreResult, SocialFeedListResult, SettingsResult, AccountLookupResult, SingUserProfileResult, SocialIsFollowingResult, SocialFolloweesResult, SocialFollowersResult, SocialCommentLikesResult, AccountProfileStatsViewsResult, PerformanceResult, RecTrendingSearchResult, SearchAutocompleteResult, SFamListResult, CampfireListResult, UserUploadPictureResult, ContactFindResult, TopicOptionResult, PreferencesResult, SFamInfoResult, SFamMemberListResult, PlaylistViewResult, PerformanceBookmarkSeedResult, ArrBookmarkListResult, ArrOwnedBy, GiftRecentTransactionsResult, SparkChatListResult } from "./types/smule-results";
 import { SearchAutocompleteRequest, AvTemplateCategoryListRequest, CategoryRequest, IsFollowingRequest, LoginAsGuestRequest, LoginCommonData, LoginRequest, PerformanceCreateRequest, PerformancePartsRequest, PerformanceReq, PerformancesListRequest, PreuploadRequest, SingUserProfileRequest, SearchRequest, SettingsRequest, SongbookRequest, UpdateFollowingRequest } from "./types/smule-requests";
 import type { AccountIcon, CampfireSyncResult, Contact, EnsembleType, PerformanceDetail, PerformanceIcon, PerformanceList, PerformancesFillStatus, PerformanceSortMethod, PerformancesSortOrder, PlaylistIcon, PlaylistSortMethod, PlaylistVisibility, SearchResultSort, SearchResultType, SFam, SFamList } from "./types/smule-types";
 import { SmuleSession, SmuleErrorCode, SmuleRegisterErrorCode } from "./types/smule-types";
@@ -682,12 +682,36 @@ export class Smule {
              * Creates a new spark chat
              * @param address The JID address of the chat partner
              * @param type Whether the JID address is an individual or a group
-             * @returns idk
              */
             create: async (address: string, type: "ACCT" | "GRP" = "ACCT") => {
                 const req = await this.internal._createRequest(SmuleUrls.SparkChatUpdate, { add: [{ name: address, type }], remove: [] })
+                this.internal._handleNon200(req)
+            },
+            /**
+             * Deletes an existing spark chat
+             * @param address The JID address of the chat partner
+             * @param type Whether the JID address is an individual or a group
+             */
+            delete: async (address: string, type: "ACCT" | "GRP" = "ACCT") => {
+                const req = await this.internal._createRequest(SmuleUrls.SparkChatUpdate, { remove: [{ name: address, type }], add: [] })
+                this.internal._handleNon200(req)
+            },
+            /**
+             * Fetches your existing chats
+             * @param type Whether an individual or a group
+             * @returns Your inbox and your message requests
+             */
+            fetchInboxes: async (type: "ACCT" | "GRP" = "ACCT") => {
+                const req = await this.internal._createRequest(SmuleUrls.SparkChatList, { type, limit: 200 })
                 if (!this.internal._handleNon200(req)) return
-                return this.internal._getResponseData<any>(req)
+                return this.internal._getResponseData<SparkChatListResult>(req)
+            },
+            /**
+             * Marks you as offline to your chats
+             */
+            markOffline: async () => {
+                const req = await this.internal._createRequest(SmuleUrls.SparkChatOffline, {})
+                this.internal._handleNon200(req)
             },
             /**
              * Creates a connection to the XMPP chat server
@@ -1955,9 +1979,9 @@ export class Smule {
              * @param to The user to send the message to
              * @param message The message body
              */
-            sendTextMessage: async (to: JID | string | AccountIcon, message: string) => {
+            sendTextMessage: async (message: string) => {
                 if (!this.liveChatSession) return
-                await this.liveChatSession.sendTextMessage(to, message)
+                await this.liveChatSession.sendTextMessage(message)
             },
             /**
              * Fetch all loaded chats
@@ -1972,28 +1996,47 @@ export class Smule {
                 if (!this.liveChatSession) return
                 return this.liveChatSession.fetchUsers()
             },
-
-            /**
-             * Loads the entire message history
-             * @param limit How many messages
-             * @param before Messages before this
-             * @param after Messages after this
-             * @param user The chat partner
-             * 
-             * @remarks This currently recurses until it loads ALL archived messages.
-             *          This means that it will take a long time to load all messages.
-             * @remarks Filtering by a specific user may not work yet
-             */
-            loadMessageHistory: async (limit = 50, before = null, after = null, user?: JID | string) => {
-                if (!this.liveChatSession) return
-                await this.liveChatSession.loadMessageHistory(limit, before, after, user)
-            },
         },
+        /**
+         * Fetches ("syncs") a livestream (campfire) so you can connect to it
+         * 
+         * @param campfireId The campfire's id
+         * @returns Data regarding the campfire and the streaming details
+         */
         fetch: async (campfireId: number) => {
             const req = await this.internal._createRequest(SmuleUrls.CfireSync, {campfireId})
             if (!this.internal._handleNon200(req)) return
             return this.internal._getResponseData<CampfireSyncResult>(req)
-        }
+        },
+        /**
+         * Fetches gifts that have been sent to a live
+         * 
+         * @param campfireId The campfire's id
+         * @param cursor The starting point
+         * @param limit How many results
+         * @returns A list of gifts data
+         */
+        fetchRecentGifts: async (campfireId: number, cursor = "start", limit = 10) => {
+            const req = await this.internal._createRequest(SmuleUrls.GiftRecentTransactions, {campfireId, cursor, limit, animationVersion: "V2", extraGiftTypes: ["SYSTEM"], previewVersion: "PNG", type: "CFIRE"})
+            if (!this.internal._handleNon200(req)) return
+            return this.internal._getResponseData<GiftRecentTransactionsResult>(req)
+        },
+        /**
+         * Sign up as available to sing
+         * @param campfireId The livestream's id
+         */
+        joinToSing: async (campfireId: number) => {
+            const req = await this.internal._createRequest(SmuleUrls.CfireSignupAdd, {campfireId, message: "I'm available to sing"})
+            this.internal._handleNon200(req)
+        },
+        /**
+         * Revoke your availability to sing
+         * @param campfireId The livestream's id
+         */
+        revokeJoinToSing: async (campfireId: number) => {
+            const req = await this.internal._createRequest(SmuleUrls.CfireSignupRemove, {campfireId})
+            this.internal._handleNon200(req)
+        },
     }
 
     public groups = {
