@@ -38,7 +38,7 @@ import { readFileSync } from "fs";
 import * as crypto from "crypto";
 import { JID } from "@xmpp/jid";
 
-export const APP_VERSION = "12.0.9"
+export const APP_VERSION = "12.6.9"
 
 /**
  * Namespace for Smule's digest parameter found in http requests
