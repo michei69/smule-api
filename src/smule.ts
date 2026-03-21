@@ -1937,7 +1937,7 @@ export class Smule {
                 this.liveChatSession = new SmuleLiveChat(user.profile.accountIcon.accountId, this.session.sessionToken, host, cfireJID)
                 
 
-                for (let eventName of ["chatstate", "receipt", "message", "history", "state", "error", "presence"]) {
+                for (let eventName of ["message", "error", "presence", "performance-start", "create-mic-request", "cancel-mic-request", "gift-sent", "new-host", "host-left", "song-listen", "stop-livestream", "guest-invite", "guest-session-started", "accept-guest-invite"]) {
                     if (!this.live.chat.eventListeners[eventName]) this.live.chat.eventListeners[eventName] = []
                     this.liveChatSession.events.on(eventName, (...args) => {
                         for (let listener of this.live.chat.eventListeners[eventName]) {
@@ -1960,7 +1960,7 @@ export class Smule {
              * Removes all listeners
              */
             removeAllListeners: () => {
-                for (let eventName of ["performance-start", "create-mic-request", "cancel-mic-request", "message", "history", "state", "error", "presence", "gift-sent", "new-host", "host-left"]) {
+                for (let eventName of ["message", "error", "presence", "performance-start", "create-mic-request", "cancel-mic-request", "gift-sent", "new-host", "host-left", "song-listen", "stop-livestream", "guest-invite", "guest-session-started", "accept-guest-invite"]) {
                     this.live.chat.eventListeners[eventName] = []
                 }
             },

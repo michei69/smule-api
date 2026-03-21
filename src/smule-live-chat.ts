@@ -34,7 +34,7 @@
 //                             yapper
 //             (get it? cause you yap in the chat?)
 
-import type { SmuleChatContainer, SmuleChatState, SmulePartnerStatus } from "./types/smule-chat-types"
+import type { SmuleChatContainer, SmuleChatState, SmuleLiveChatUser, SmulePartnerStatus } from "./types/smule-chat-types"
 import { type Client, client, xml } from "@xmpp/client"
 import type { AccountIcon } from "./types/smule-types"
 import { SmuleUrls } from "./smule-urls"
@@ -50,7 +50,7 @@ export class SmuleLiveChat {
     private jid: JID
     private iqs = {}
     private roomJID: string = null
-    private roomUsers = []
+    private roomUsers: SmuleLiveChatUser[] = []
 
     private chat: SmuleChatContainer = { messages: [] }
 
@@ -88,10 +88,19 @@ export class SmuleLiveChat {
     public async connect() {
         this.jid = await this.client.start()
         this._log("Connected as:", this.jid.getLocal() + "@" + this.jid.getDomain())
+
+        this.sendIqQuery("http://jabber.org/protocol/disco#info", (el) => {
+            console.log("reply from disco", el)
+        })
         this.client.send(
             xml(
                 "presence",
                 { to: this.roomJID + "/" + this.jid.getLocal() },
+                xml(
+                    "priority",
+                    {},
+                    "0"
+                ),
                 xml(
                     "x", 
                     { xmlns: "http://jabber.org/protocol/muc" },
@@ -105,9 +114,6 @@ export class SmuleLiveChat {
                 )
             )
         )
-        this.sendIqQuery("http://jabber.org/protocol/disco#info", (el) => {
-            console.log("reply from disco", el)
-        })
     }
     /**
      * Disconnects the client from the XMPP server.
@@ -171,7 +177,8 @@ export class SmuleLiveChat {
      * @returns The JID's smule user id
      */
     public getUserIdFromJID(jid: string|JID) {
-        if (!(typeof jid == "string")) return parseInt(jid.getLocal())
+        if (!(typeof jid == "string") && "getLocal" in jid) return parseInt(jid.getLocal())
+        if (jid.includes("/") && !jid.includes("conference.jc")) return parseInt(jid.split("@")[0])
         if (jid.includes("/")) return parseInt(jid.split("/")[1])
         return parseInt(jid.split("@")[0])
     }
@@ -217,7 +224,7 @@ export class SmuleLiveChat {
                 id: el.getAttr("id"),
             }
             this._log("Got performance start!", data)
-            this.events.emit("performanceStart", data)
+            this.events.emit("performance-start", data)
         }
 
         // on mic request
@@ -230,7 +237,7 @@ export class SmuleLiveChat {
                 id: el.getAttr("id"),
             }
             this._log("Got mic request!", data)
-            this.events.emit("createMicRequest", data)
+            this.events.emit("create-mic-request", data)
         }
 
         // on cancel mic request
@@ -241,7 +248,7 @@ export class SmuleLiveChat {
                 id: el.getAttr("id"),
             }
             this._log("Got cancel mic request!", data)
-            this.events.emit("cancelMicRequest", data)
+            this.events.emit("cancel-mic-request", data)
         }
 
         // on gift sent
@@ -257,7 +264,7 @@ export class SmuleLiveChat {
                 id: el.getAttr("id"),
             }
             this._log("Got gift sent!", data)
-            this.events.emit("giftSent", data)
+            this.events.emit("gift-sent", data)
         }
 
         // on new host
@@ -285,7 +292,7 @@ export class SmuleLiveChat {
             this.events.emit("host-left", data)
         }
 
-        // on song-listen idk
+        // on song-listen (start performance)
         child = el.getChild("song-listen")
         if (child) {
             const data = {
@@ -304,6 +311,37 @@ export class SmuleLiveChat {
             }
             this._log("Got stop livestream!", data)
             this.events.emit("stop-livestream", data)
+        }
+
+        // on guest invite
+        child = el.getChild("guest-invite")
+        if (child) {
+            const data = {
+                recipientId: child.getChild("recipient-occupant-id").getText(),
+                senderId: this.getUserIdFromJID(el.getAttr("from")),
+            }
+            this._log("Got guest invite!", data)
+            this.events.emit("guest-invite", data)
+        }
+
+        // on guest session started
+        child = el.getChild("guest-session-started")
+        if (child) {
+            const data = {
+                guestId: child.getChild("guest-occupant-id").getText(),
+            }
+            this._log("Got guest session started!", data)
+            this.events.emit("guest-session-started", data)
+        }
+
+        // on accept guest invite
+        child = el.getChild("accept-guest-invite")
+        if (child) {
+            const data = {
+                guestId: child.getChild("recipient-occupant-id").getText(),
+            }
+            this._log("Got accept guest invite!", data)
+            this.events.emit("accept-guest-invite", data)
         }
 
         // on history received
@@ -328,11 +366,12 @@ export class SmuleLiveChat {
     
     private parsePresence(el: Element) {
         if (el.children.length < 1) return
-        let child = el.getChildByAttr("xmlns", "http://jabber.org/protocol/muc#user")
+        let child = el.getChild("x")
+        // this._log("presence!!!", el.toString())
         if (child) {
             child = child.getChild("item")
             if (child) {
-                if (!el.getAttr("jid")) {
+                if (!child.getAttr("jid")) {
                     // todo: handle self presence, and kicks
                     // <item role='none' affiliation='none'>
                     //     <reason>
@@ -340,14 +379,17 @@ export class SmuleLiveChat {
                     //     </reason>
                     // </item>
                 } else {
+                    console.log("child", child.toString())
                     const data = {
-                        user: this.getUserIdFromJID(el.getAttr("jid")),
+                        id: this.getUserIdFromJID(child.getAttr("jid")),
                         role: child.getAttr("role"),
                         affiliation: child.getAttr("affiliation"),
                     }
                     this._log("Got presence!", data)
-                    this.roomUsers.push(data)
-                    this.events.emit("presence", data)
+                    if (!this.roomUsers.find((u) => u.id == data.id)) {
+                        this.roomUsers.push(data)
+                        this.events.emit("presence", data)
+                    }
                 }
             }
         }
@@ -450,7 +492,7 @@ export class SmuleLiveChat {
         } else {
             if (el.is("iq")) {
                 const id = el.getAttr("id")
-                if (id) {
+                if (id && id in this.iqs) {
                     this.iqs[id](el)
                     delete this.iqs[id]
                 }
