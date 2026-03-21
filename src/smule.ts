@@ -1262,6 +1262,9 @@ export class Smule {
                 url: filesData.midi_file || filesData.midi_file_original,
                 method: "GET",
                 responseType: "arraybuffer",
+                headers: {
+                    "User-Agent": "Smule/1.0.0"
+                }
             })
 
             const lyrics = SmuleMIDI.fetchLyricsFromMIDI(req.data)
@@ -1271,6 +1274,9 @@ export class Smule {
                     url: filesData.pitch_file,
                     method: "GET",
                     responseType: "arraybuffer",
+                    headers: {
+                        "User-Agent": "Smule/1.0.0"
+                    }
                 })
 
                 const pitch = SmuleMIDI.fetchPitchesFromMIDI(req.data, lyrics.lyrics)
