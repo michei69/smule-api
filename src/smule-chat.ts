@@ -170,22 +170,25 @@ export class SmuleChat {
 
         // reset all chats before fetching history
         if (!before && !after && !jid) this.chats = {}
-        this.sendIq(
-            xml(
-                'query',
-                { xmlns: 'urn:xmpp:mam:2' },
-                xml('set', { xmlns: 'http://jabber.org/protocol/rsm' },
-                    xml('max', {}, limit.toString()),
-                    before ? xml('before', {}, before.toString()) : null,
-                    after ? xml('after', {}, after.toString()) : null
+        await new Promise(resolve => {
+            this.sendIq(
+                xml(
+                    'query',
+                    { xmlns: 'urn:xmpp:mam:2' },
+                    xml('set', { xmlns: 'http://jabber.org/protocol/rsm' },
+                        xml('max', {}, limit.toString()),
+                        before ? xml('before', {}, before.toString()) : null,
+                        after ? xml('after', {}, after.toString()) : null
+                    ),
+                    jid ? xml('with', {}, jid.toString()) : null
                 ),
-                jid ? xml('with', {}, jid.toString()) : null
-            ),
-            (el: Element) => {
-                this._log("Finished loading history!", el.toString())
-            },
-            "set"
-        )
+                (el: Element) => {
+                    this._log("Finished loading history!", el.toString())
+                    resolve(null)
+                },
+                "set"
+            )
+        })
     }
     /**
      * Send a text message
@@ -442,7 +445,7 @@ export class SmuleChat {
         } else {
             if (el.is("iq")) {
                 const id = el.getAttr("id")
-                if (id) {
+                if (id && id in this.iqs) {
                     this.iqs[id](el)
                     delete this.iqs[id]
                 }
